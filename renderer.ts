@@ -1,5 +1,5 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 10 (condensed)
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 11
 // Imports the logic layer (scaffold.ts, Session-13-amended). Canvas 2D
 // board + DOM chrome. Full rationale, revision history, R# assumptions,
 // open items: RENDERER-NOTES.md (archive — keep in sync, do not grow code).
@@ -55,6 +55,9 @@ import type { GridType, CompanyInfoView, FinalStandings, Money } from './scaffol
 // Lee-verified observable spec of the original binary.
 // R14 RETIRED (rev 10): standings auto-show at natural game end, per orig
 // BitBtn1Click Finish(); the continue button remains a post-hoc viewer.
+// R15 RETIRED (rev 11): split/merger dialogs carry per-player tables
+// (orig SplitForm/Merger ListView content), matching the orig display
+// ranges (CLASSIC all players; TOURNAMENT current player only).
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 const MAX_PLAYERS = 6;             // R6
@@ -137,6 +140,22 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (cls) node.className = cls;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+// R15 view-model rows: per-player table content for split/merger dialogs,
+// captured eagerly in the action hooks (before the queued modal opens).
+export interface SplitTableRow {
+  playerIndex: number;
+  name: string;
+  sharesBefore: Money;
+  sharesAfter: Money;
+}
+export interface MergerTableRow {
+  playerIndex: number;
+  name: string;
+  absorbedShares: Money;  // shares in the absorbed company (never zeroed — zombie quirk)
+  survivorShares: Money;  // post-conversion holding in the survivor (CLASSIC)
+  moneyEarned: Money;     // payout = absorbed shares × pre-merger absorbed value
 }
 
 export class SpaceMonopolyApp {
@@ -545,6 +564,15 @@ export class SpaceMonopolyApp {
   // FIDELITY:[event-modals]: splits, mergers AND foundings announce via
   // modal dialogs like the orig SplitForm / Merger / NewCom forms. The
   // modal queue preserves orig event order.
+  //
+  // R15 (rev 11): per-player table data is captured EAGERLY in these
+  // hooks — both before AND after the mutating hook call — because the
+  // DOM modals are queued, not blocking: a later chained event inside
+  // the same action() (merger → split) would otherwise present stale or
+  // mutated numbers when the dialog finally opens. Display ranges match
+  // the orig SplitForm/Merger ListView population exactly: all players
+  // in CLASSIC, current player only in TOURNAMENT (identical to the
+  // ranges comSplitHook/mergerHook themselves mutate).
   private actionHooks() {
     return {
       redrawGrid: () => this.redrawGrid(),
@@ -562,33 +590,58 @@ export class SpaceMonopolyApp {
         this.redrawGrid();
       },
       comSplit: (companyId: number) => {
-        // Capture pre-split numbers BEFORE comSplitHook mutates them, so the
-        // dialog can show the before/after economics.
-        const com = this.state.company[companyId];
-        const oldPrice = com.value;
-        const oldShares = this.state.player[this.state.curplay].shares[companyId];
-        comSplitHook(this.state, companyId);
-        this.splitDialog(companyId, oldPrice, oldShares);
+        // Capture per-player shares BEFORE comSplitHook doubles them;
+        // AFTER values read post-mutation (orig displays post-mutation).
+        const s = this.state;
+        const oldPrice = s.company[companyId].value;
+        const start = s.gameType === TOURNAMENT ? s.curplay : 0;
+        const end = s.gameType === TOURNAMENT ? s.curplay + 1 : s.numplays;
+        const rows: SplitTableRow[] = [];
+        for (let i = start; i < end; i++) {
+          rows.push({
+            playerIndex: i,
+            name: s.player[i].name,
+            sharesBefore: s.player[i].shares[companyId],
+            sharesAfter: 0n, // filled after the hook mutates
+          });
+        }
+        comSplitHook(s, companyId);
+        for (const r of rows) {
+          r.sharesAfter = s.player[r.playerIndex].shares[companyId];
+        }
+        this.splitDialog(companyId, oldPrice, rows);
         this.moneyShow();
       },
       merger: (survivorId: number, absorbedId: number) => {
-        // Capture pre-merger numbers BEFORE mergerHook mutates them.
+        // Capture pre-merger values BEFORE mergerHook mutates them;
+        // per-player rows assembled POST-mutation (orig Merger populates
+        // its ListView after mutating — mutation-before-display).
+        // Absorbed holdings are unchanged by the hook (zombie-shares
+        // quirk: never zeroed), so post-read equals pre-read; survivor
+        // holdings ARE changed by CLASSIC conversion, hence post-read.
+        // moneyEarned = absorbed shares × PRE-merger absorbed value.
         const s = this.state;
-        const survivor = s.company[survivorId];
-        const absorbed = s.company[absorbedId];
-        const oldSurvivorValue = survivor.value;
-        const absorbedValue = absorbed.value;
-        const myAbsorbedShares = s.player[s.curplay].shares[absorbedId];
-        const mySurvivorShares = s.player[s.curplay].shares[survivorId];
-        mergerHook(this.state, survivorId, absorbedId);
-        this.mergerDialog(
-          survivorId,
-          absorbedId,
-          oldSurvivorValue,
-          absorbedValue,
-          myAbsorbedShares,
-          mySurvivorShares,
-        );
+        const oldSurvivorValue = s.company[survivorId].value;
+        const absorbedValue = s.company[absorbedId].value;
+        const start = s.gameType === TOURNAMENT ? s.curplay : 0;
+        const end = s.gameType === TOURNAMENT ? s.curplay + 1 : s.numplays;
+        const preAbsorbed: Money[] = [];
+        for (let i = start; i < end; i++) {
+          preAbsorbed.push(s.player[i].shares[absorbedId]);
+        }
+        mergerHook(s, survivorId, absorbedId);
+        const rows: MergerTableRow[] = [];
+        for (let k = 0; k < preAbsorbed.length; k++) {
+          const i = start + k;
+          rows.push({
+            playerIndex: i,
+            name: s.player[i].name,
+            absorbedShares: preAbsorbed[k],
+            survivorShares: s.player[i].shares[survivorId],
+            moneyEarned: preAbsorbed[k] * BigInt(absorbedValue),
+          });
+        }
+        this.mergerDialog(survivorId, absorbedId, oldSurvivorValue, absorbedValue, rows);
         this.moneyShow();
       },
     };
@@ -725,8 +778,14 @@ export class SpaceMonopolyApp {
   }
 
   // FIDELITY:[splitform-modal] — orig SplitForm dialog announcing a 2-for-1
-  // split. Displays the before/after economics captured by the comSplit hook.
-  private splitDialog(companyId: number, oldPrice: number, oldShares: Money): void {
+  // split, with the orig per-player ListView restored (R15): one row per
+  // player — name / shares before / shares after — populated over the same
+  // range the orig loops (CLASSIC: all players; TOURNAMENT: current only).
+  private splitDialog(
+    companyId: number,
+    oldPrice: number,
+    rows: SplitTableRow[],
+  ): void {
     this.queueModal((release) => {
       const s = this.state;
       const c = s.company[companyId];
@@ -746,11 +805,28 @@ export class SpaceMonopolyApp {
       box.appendChild(el('div', undefined,
         `\u2022 Share price: ${this.formatMoney(BigInt(oldPrice))} \u2192 ` +
         `${this.formatMoney(BigInt(c.value))}`));
-      box.appendChild(el('div', undefined,
-        `\u2022 Your holding: ${oldShares} \u2192 ` +
-        `${s.player[s.curplay].shares[companyId]} shares`));
+
+      // R15: orig SplitForm ListView — name / shares before / shares after.
+      const table = el('table');
+      const head = el('tr');
+      for (const h of ['Player', 'Shares before', 'Shares after']) {
+        head.appendChild(el('th', undefined, h));
+      }
+      table.appendChild(head);
+      for (const r of rows) {
+        const tr = el('tr');
+        if (r.playerIndex === s.curplay) tr.style.fontWeight = '700';
+        tr.appendChild(el('td', undefined, r.name));
+        tr.appendChild(el('td', undefined, r.sharesBefore.toString()));
+        tr.appendChild(el('td', undefined, r.sharesAfter.toString()));
+        table.appendChild(tr);
+      }
+      box.appendChild(table);
+
       box.appendChild(el('div', 'sm-hint',
-        'All shareholders have had their share counts doubled.'));
+        s.gameType === TOURNAMENT
+          ? 'Only the current player\u2019s shares are doubled in Tournament (original behavior).'
+          : 'All shareholders have had their share counts doubled.'));
 
       const actions = el('div', 'sm-actions');
       const ok = el('button', undefined, 'OK');
@@ -765,16 +841,18 @@ export class SpaceMonopolyApp {
     });
   }
 
-  // FIDELITY:[mergerform-modal] — orig Merger form dialog. Displays the
-  // before/after economics captured by the merger hook: payout for
-  // absorbed shares, share conversion (CLASSIC), combined values.
+  // FIDELITY:[mergerform-modal] — orig Merger form dialog with the per-player
+  // ListView restored (R15): one row per player — name / shares in the
+  // absorbed company / shares in the survivor / money earned — over the
+  // same range the orig loops (CLASSIC: all players; TOURNAMENT: current
+  // only). Row data is captured in the merger hook (mutation-before-display,
+  // eager capture for queued-modal safety — see actionHooks.merger).
   private mergerDialog(
     survivorId: number,
     absorbedId: number,
     oldSurvivorValue: number,
     absorbedValue: number,
-    myAbsorbedShares: Money,
-    mySurvivorShares: Money,
+    rows: MergerTableRow[],
   ): void {
     this.queueModal((release) => {
       const s = this.state;
@@ -800,30 +878,40 @@ export class SpaceMonopolyApp {
       banner2.appendChild(el('strong', undefined, survivor.name));
       box.appendChild(banner2);
 
-      const rows: Array<[string, string]> = [
-        ['Combined value',
-          `${this.formatMoney(BigInt(oldSurvivorValue))} + ` +
-          `${this.formatMoney(BigInt(absorbedValue))} = ` +
-          `${this.formatMoney(BigInt(survivor.value))}`],
-      ];
-      if (myAbsorbedShares > 0n) {
-        rows.push(['Payout (your absorbed shares)',
-          `${myAbsorbedShares} \u00d7 ${this.formatMoney(BigInt(absorbedValue))}`]);
-        if (s.gameType === CLASSIC) {
-          rows.push(['Your shares converted',
-            `${mySurvivorShares} + ${myAbsorbedShares} = ` +
-            `${s.player[s.curplay].shares[survivorId]} ${survivor.name} shares`]);
-        } else {
-          rows.push(['Your shares converted',
-            'None \u2014 Tournament shares are not converted (original behavior)']);
-        }
+      const combined = el('div', 'sm-row');
+      combined.appendChild(el('span', undefined, 'Combined value:'));
+      combined.appendChild(el('strong', undefined,
+        `${this.formatMoney(BigInt(oldSurvivorValue))} + ` +
+        `${this.formatMoney(BigInt(absorbedValue))} = ` +
+        `${this.formatMoney(BigInt(survivor.value))}`));
+      box.appendChild(combined);
+
+      // R15: orig Merger ListView — name / shares in A / shares in B /
+      // money earned (A = absorbed, B = survivor).
+      const table = el('table');
+      const head = el('tr');
+      for (const h of ['Player', `Shares in ${absorbed.name}`, `Shares in ${survivor.name}`, 'Money earned']) {
+        head.appendChild(el('th', undefined, h));
       }
-      for (const [k, v] of rows) {
-        const r = el('div', 'sm-row');
-        r.appendChild(el('span', undefined, `${k}:`));
-        r.appendChild(el('strong', undefined, v));
-        box.appendChild(r);
+      table.appendChild(head);
+      for (const r of rows) {
+        const tr = el('tr');
+        if (r.playerIndex === s.curplay) tr.style.fontWeight = '700';
+        tr.appendChild(el('td', undefined, r.name));
+        tr.appendChild(el('td', undefined, r.absorbedShares.toString()));
+        tr.appendChild(el('td', undefined, r.survivorShares.toString()));
+        tr.appendChild(el('td', undefined, this.formatMoney(r.moneyEarned)));
+        table.appendChild(tr);
       }
+      box.appendChild(table);
+
+      if (s.gameType === TOURNAMENT) {
+        // QUIRK tournament-no-conversion: TOURNAMENT payouts without
+        // conversion — surfaced rather than hidden.
+        box.appendChild(el('div', 'sm-hint',
+          'Tournament: shares are not converted \u2014 only the cash payout occurs (original behavior).'));
+      }
+
       box.appendChild(el('div', 'sm-hint',
         `${absorbed.name} no longer exists; its squares now belong to ` +
         `${survivor.name}.`));
