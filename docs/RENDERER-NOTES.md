@@ -403,15 +403,14 @@ read — renderer-only, scaffold untouched.
   dialogs) were exercised incidentally during the playthroughs without
   issue. TOURNAMENT spot-check not performed; R15 caveat remains open.
 
-### rev 13 (renderer split — Option A; REORGANIZATION ONLY, no behavior change)
+### rev 13 (renderer split — Option A; REORGANIZATION ONLY, no behavior change; VERIFIED)
 Approved at Session-16 close (FRESH_BOOTSTRAP §3), executed Session 17.
 Motivation: context/truncation management. The monolithic renderer.ts
 is split into renderer.ts (chrome/board/turn-flow) + dialogs.ts (all
 modal/dialog presentation). Scaffold untouched; ZERO behavior change —
-the rev-12 verification (primary checklist 9/9) remains the accepted
-baseline, and the FRESH_BOOTSTRAP §6 regression baseline is the
-acceptance bar for the split (expected: a smoke pass, not a new
-behavioral review).
+the rev-12 verification (primary checklist 9/9) remained the accepted
+baseline, and the FRESH_BOOTSTRAP §6 regression baseline was the
+acceptance bar for the split.
 
 - **What moved to dialogs.ts** (new artifact id `dialogs-ts`, rev 1):
   all modal/dialog code — `foundingDialog`, `splitDialog`,
@@ -428,27 +427,33 @@ behavioral review).
   `.sm-hint`, `.sm-splitbanner`, dialog input styles).
 - **Enumeration note**: the bootstrap §3 list named eleven dialog
   functions + msgBox/toast; the governing clause is "all modal/dialog
-  code (~350–400 lines)," and bootstrap §4 states the Move Up/Down
-  work "lives in the new-game dialog (dialogs.ts after split)" —
+  code (~350–400 lines)," and bootstrap §4 states the Move Up/Down work
+  "lives in the new-game dialog (dialogs.ts after split)" —
   therefore `newGameDialog` moves (and `quitConfirm`, a pure modal with
   no canvas coupling, moves with it). renderer.ts's retained list in
   §3 (init/chrome, board, timer, mouse, turn flow, actionHooks,
   moneyShow/mainUpdate) does not include them.
-- **What renderer.ts retains**: app init/chrome + root CSS injection,
-  canvas board rendering (incl. drawCellEntity — the tile-art seam),
-  selection timer, mouse handling, turn flow (`onContinue`,
-  `beginTurnChoices`, `doConclude`), `actionHooks` IN FULL — including
-  the R15 eager-capture row assembly — `moneyShow`/`mainUpdate`,
-  `mountApp`, `setGridSize`, `redrawGrid`/`drawSels`.
+- **What renderer.ts retains**: app init/chrome + root CSS injection
+  (and the injectDialogStyles() call, keeping the chrome-then-dialog
+  stylesheet order), canvas board rendering (incl. drawCellEntity — the
+  tile-art seam), selection timer, mouse handling, turn flow
+  (`onContinue`, `beginTurnChoices`, `doConclude`), `actionHooks` IN
+  FULL — including the R15 eager-capture row assembly —
+  `moneyShow`/`mainUpdate`, `mountApp`, `setGridSize`,
+  `redrawGrid`/`drawSels`.
 - **Pattern**: SpaceMonopolyApp methods become thin delegates; the
   dialog bodies are free functions in dialogs.ts receiving what they
   need via parameters — state, a `formatMoney` helper, storage/key,
-  and app-side callbacks (e.g. tradeDialog takes redraw/moneyShow
-  refreshers; newGameDialog takes a start-game callback that performs
-  setGridSize-if-changed → startGame → beginTurnChoices; quitConfirm
-  is self-contained). Dialogs import scaffold directly for view-model
-  calls (companyInfo, playerDetailsView, highScores, prefs draft/commit)
-  exactly as before; the logic layer sees no difference.
+  and app-side callbacks (tradeDialog takes redraw/moneyShow
+  refreshers; newGameDialog takes a `NewGameDialogCallbacks` bundle —
+  setGridSize, onGameStarted [resets the app-private concluded flag],
+  redrawGrid, moneyShow, mainUpdate, beginTurnChoices — preserving the
+  Go! order verbatim: setGridSize-if-changed → startGame → concluded
+  reset → close → redraw → moneyShow → mainUpdate → beginTurnChoices;
+  standingsDialog chains scoresTableDialog via its onClose callback
+  exactly as rev 12 did in-file). Dialogs import scaffold directly for
+  view-model calls (companyInfo, playerDetailsView, highScores, prefs
+  draft/commit) exactly as before; the logic layer sees no difference.
 - **Eager-capture survival (R15)**: the before/after snapshot logic and
   `SplitTableRow`/`MergerTableRow` assembly stay in renderer.ts's
   `actionHooks` — only the PRESENTATION of the rows moved to
@@ -472,13 +477,19 @@ behavioral review).
   depends on revision numbers uniquely identifying file contents. The
   rev-13 marker + this entry preserve the invariant that rev 12 =
   the Lee-verified monolith.
-- **CSS split mechanics**: dialogs.ts injects the dialog stylesheet
-  (exported `injectDialogStyles()`); renderer.ts injects the chrome/
-  board stylesheet first. Selector precedence/ordering is unchanged —
-  the dialog classes never overlapped chrome classes beyond .sm-root's
-  color inheritance, which the modals were already outside
-  (rev-3 FIX:[modal-inheritance] — modals append to document.body and
-  declare their own colors; this survives the split unchanged).
+- **CSS split mechanics**: dialogs.ts exports the dialog stylesheet
+  via `injectDialogStyles()`; renderer.ts injects the chrome/board
+  stylesheet first, then calls it. Selector precedence/ordering is
+  unchanged — the dialog classes never overlapped chrome classes
+  beyond .sm-root's color inheritance, which the modals were already
+  outside (rev-3 FIX:[modal-inheritance] — modals append to
+  document.body and declare their own colors; this survives the split
+  unchanged).
+- **VERIFIED BY LEE (Session 17, split smoke-pass)**: "Everything is
+  working as expected. Source split successful." The two-file build
+  passed the FRESH_BOOTSTRAP §6 regression baseline; no behavioral
+  drift reported. Rev 13 / dialogs rev 1 accepted as the new canonical
+  source of truth for their respective files.
 
 ---
 
@@ -543,38 +554,32 @@ ones are cosmetic/utility choices that are deliberately settled.
 ## 3. Queued Work / Open Items
 
 **Phase 3 COMPLETE; R15 (rev 11) and R16 (rev 12) SHIPPED AND VERIFIED
-(primary checklists); renderer split (rev 13) SHIPPED — verification
-pending.** Remaining work:
+(primary checklists); renderer split (rev 13) SHIPPED AND VERIFIED
+(Session 17 smoke-pass).** Remaining work:
 
-1. **Split smoke-pass** (rev 13 acceptance): the FRESH_BOOTSTRAP §6
-   regression baseline over the two-file build — boot circles, same-
-   size new game, grid-size change, founding→trade chain, split/merger
-   tables, triple merge, both end paths → standings + tabbed scores,
-   no duplicate insertion, fraudster messages, prefs flow, quit
-   confirm.
-2. **Cosmetic backlog** (fidelity-first, per Lee's standing ruling):
+1. **Cosmetic backlog** (fidelity-first, per Lee's standing ruling):
    - Move Up/Move Down player-reorder buttons in new-game setup (orig
      Players.cpp BitBtn5/BitBtn6; do NOT reproduce their
-     strcpy-overflow pattern — swap by reference). **NEXT UP** after
-     the split is verified. Lives in dialogs.ts (newGameDialog).
-3. **TOURNAMENT spot-check** (opportunistic, rev-11 R15 caveat + rev-12
+     strcpy-overflow pattern — swap by reference). **NEXT UP.** Lives in
+     dialogs.ts (newGameDialog).
+2. **TOURNAMENT spot-check** (opportunistic, rev-11 R15 caveat + rev-12
    secondary): 2-player Tournament game — single-row split/merger
    tables, no-conversion hint, "(Tournament)" turn label, natural end
    at maxturns+1. Low risk; run whenever convenient.
-4. **Unrun secondary checks** (low priority): fresh-storage David/1M
+3. **Unrun secondary checks** (low priority): fresh-storage David/1M
    defaults view, high-score persistence across page reload, menu
    dialog no-tinting (newEntry transience).
-5. **New-game board mechanism (DOCUMENTARY ONLY, non-blocking)**: no
+4. **New-game board mechanism (DOCUMENTARY ONLY, non-blocking)**: no
    examined original file explains why circles survive new game —
    Grid::clear() is uninitialized-loop UB (Grid.h), and Game.cpp (read
    Sessions 1–2, ported as boot defaults) contains no clearing logic.
    Port implements Lee's observed spec (scaffold
    FIX:[phase3-verified]); nothing further to do unless new original
    sources surface.
-6. **Verify-before-ship trivia** (carried from NOTES §10): currency
+5. **Verify-before-ship trivia** (carried from NOTES §10): currency
    symbol raw byte (assume £), prefs persistence option (b) decision,
    SMMain.dfm captions (would also settle R1's timer interval).
-7. **Tile-art extraction seam**: drawCellEntity() is the single method
+6. **Tile-art extraction seam**: drawCellEntity() is the single method
    to swap for bitmap tiles (SpacePoly2.res via Resource Hacker — look
    for BITMAP entries; Space.ico is the app icon only; SpacePoly2.mak
    is a build script, no runtime relevance).
@@ -641,7 +646,7 @@ optional ship trivia only (SMMain.dfm, SpacePoly2.res — see §3).
 
 ---
 
-*Last updated: Session 17 split reissue — rev 13 (reorganization-only)
-entry added documenting the renderer.ts → renderer.ts + dialogs.ts
-split; conventions updated for the two-file reissue reality; §3 queue
-advanced to split smoke-pass with Move Up/Down next up.*
+*Last updated: Session 17 post-verification reissue — rev 13 smoke-pass
+verified by Lee ("Source split successful"); rev-13 entry stamped
+VERIFIED; §3 queue advanced to Move Up/Down reorder buttons as the
+next work item.*
