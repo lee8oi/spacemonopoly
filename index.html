@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Space Monopoly — TypeScript Port</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #14141f; }
+  </style>
+</head>
+<body>
+  <!-- Host element: renderer mounts the full UI (menubar, canvas, side panel) here -->
+  <div id="app"></div>
+
+  <!-- Produced by: npx esbuild renderer.ts --bundle --format=iife --global-name=SM --outfile=bundle.js -->
+  <script src="bundle.js"></script>
+
+  <script>
+    // Mount once the bundle is loaded. SpaceMonopolyApp is exported on
+    // the SM global (see global-name above); mountApp() is equivalent.
+    const app = new SM.SpaceMonopolyApp(document.getElementById('app'));
+  </script>
+</body>
+</html>
