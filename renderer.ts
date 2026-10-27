@@ -1,5 +1,5 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 11
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 12
 // Imports the logic layer (scaffold.ts, Session-13-amended). Canvas 2D
 // board + DOM chrome. Full rationale, revision history, R# assumptions,
 // open items: RENDERER-NOTES.md (archive — keep in sync, do not grow code).
@@ -41,13 +41,14 @@ import {
   sellAllShares,
   canAffordCompany,
   playerDetailsView,
-  concludeGame,
+  finishStandings,
   highScores,
+  createComs,
   openPreferencesDraft,
   savePreferences,
   PREFERENCES_STORE_KEY,
 } from './scaffold';
-import type { GridType, CompanyInfoView, FinalStandings, Money } from './scaffold';
+import type { GridType, CompanyInfoView, FinalStandings, Money, ScoreRecord } from './scaffold';
 
 // R2 RETIRED (Session 13): the NEW_GAME_RANDOMISES flag is deleted.
 // Board-on-new-game behavior now lives in scaffold startGame()
@@ -58,6 +59,10 @@ import type { GridType, CompanyInfoView, FinalStandings, Money } from './scaffol
 // R15 RETIRED (rev 11): split/merger dialogs carry per-player tables
 // (orig SplitForm/Merger ListView content), matching the orig display
 // ranges (CLASSIC all players; TOURNAMENT current player only).
+// R16 RETIRED (rev 12): end-of-game sequence is standings modal →
+// high-scores modal (tabbed, current grid's tab activated, new entries
+// highlighted), per orig Finish() → HighScores(true); the standalone
+// High Scores menu dialog shares the tabbed presentation.
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 const MAX_PLAYERS = 6;             // R6
@@ -129,6 +134,16 @@ const CSS = `
 .sm-splitbanner { display: flex; align-items: center; gap: 10px; margin: 8px 0;
   flex-wrap: wrap; }
 .sm-splitbanner .sm-swatch { width: 18px; height: 18px; }
+/* FIDELITY:[highscores-tabs] (rev 12): tab strip approximating the orig
+   3-grid PageControl; new-entry rows tinted (orig used row selection). */
+.sm-tabs { display: flex; gap: 4px; margin: 8px 0; }
+.sm-tabs button { background: #1d1d30; color: #9a9ac0;
+  border: 1px solid #3a3a58; border-radius: 4px 4px 0 0; padding: 4px 14px;
+  cursor: pointer; }
+.sm-tabs button.sm-tabactive { background: #2a2a44; color: #e8e8f2;
+  border-color: #5a5a85; font-weight: 600; }
+.sm-tabs button:focus { outline: none; }
+tr.sm-newentry { background: #2e2e52; font-weight: 700; }
 `;
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -542,6 +557,19 @@ export class SpaceMonopolyApp {
   // FIX:[doconclude-guard]: force=true (End Game menu) concludes even
   // mid-game, mirroring orig EndGame1Click; force=false (natural end /
   // post-hoc viewer) only valid once the game has ended.
+  //
+  // FIDELITY:[highscores-modal] (rev 12; R16 retired): the sequence is
+  // now TWO dialogs — standings modal, then on Close the high-scores
+  // modal (tabbed, current grid's tab activated) — matching orig
+  // Finish(); HighScores(true);. Both end paths run through here.
+  //
+  // DEVIATION:[doconclude-composes-tail] (rev 12): composed here rather
+  // than via the scaffold's concludeGame() wrapper because the second
+  // modal needs the INSERTED table with its transient newEntry flags —
+  // the wrapper discards it, and re-running it would duplicate entries.
+  // Body is the wrapper's verbatim: finishStandings → highScores(true)
+  // → createComs. RE-SYNC WARNING: if concludeGame is ever amended,
+  // this three-call sequence must be re-synced manually (see notes).
   private doConclude(force: boolean): void {
     const s = this.state;
     if (force) {
@@ -553,11 +581,18 @@ export class SpaceMonopolyApp {
       if (s.progress || this.concluded) return;
     }
     this.concluded = true;
-    const standings = concludeGame(s, this.storage, SCORES_STORE_KEY);
+    s.progress = false;
+    const standings = finishStandings(s);
+    const scores = highScores(s, true, this.storage, SCORES_STORE_KEY);
+    createComs(s);
     this.redrawGrid();
     this.mainUpdate();
     this.moneyShow();
-    this.standingsDialog(standings);
+    this.standingsDialog(standings, () => {
+      // orig: Finish(); then HighScores(true) — second modal, current
+      // grid's tab activated, new entries highlighted.
+      this.scoresTableDialog(scores);
+    });
   }
 
   // action() hooks — pure logic calls + announcements.
@@ -1317,37 +1352,75 @@ export class SpaceMonopolyApp {
 
   // --- High Scores -------------------------------------------------------------
 
-  private scoresDialog(): void {
+  // FIDELITY:[highscores-tabs] (rev 12; R16): shared tabbed presentation
+  // (orig 3-grid PageControl equivalent). Used by BOTH the standalone
+  // High Scores menu dialog and the end-of-game second modal; the
+  // current grid's tab is ACTIVATED on entry (orig behavior on insert).
+  // New entries are bold + row-tinted (orig used row selection).
+  private scoresTableDialog(scores: ScoreRecord[][]): void {
     const s = this.state;
-    const scores = highScores(s, false, this.storage, SCORES_STORE_KEY);
     const box = el('div');
     box.appendChild(el('h3', undefined, 'High Scores'));
+
     const labels = ['Small (16\u00d712)', 'Medium (22\u00d718)', 'Large (28\u00d724)'];
-    for (let t = 0; t < scores.length; t++) {
-      box.appendChild(el('h4', undefined, labels[t]));
+
+    // Tab strip.
+    const tabs = el('div', 'sm-tabs');
+    const tabBtns: HTMLButtonElement[] = [];
+
+    // Tab body — rebuilt on switch.
+    const tabBody = el('div');
+    const renderTable = (t: number): void => {
+      tabBody.textContent = '';
       const table = el('table');
       for (let j = 0; j < scores[t].length; j++) {
         const rec = scores[t][j];
         const tr = el('tr');
-        if (rec.newEntry) tr.style.fontWeight = '700';
+        if (rec.newEntry) tr.className = 'sm-newentry';
         tr.appendChild(el('td', undefined, `${j + 1}.`));
         tr.appendChild(el('td', undefined, rec.name));
         tr.appendChild(el('td', undefined, this.formatMoney(rec.wealth)));
         table.appendChild(tr);
       }
-      box.appendChild(table);
+      tabBody.appendChild(table);
+      for (let i = 0; i < tabBtns.length; i++) {
+        tabBtns[i].className = i === t ? 'sm-tabactive' : '';
+      }
+    };
+
+    for (let t = 0; t < scores.length; t++) {
+      const tab = el('button', undefined, labels[t]);
+      tab.addEventListener('click', () => renderTable(t));
+      tabs.appendChild(tab);
+      tabBtns.push(tab);
     }
+    box.appendChild(tabs);
+    box.appendChild(tabBody);
+
     const actions = el('div', 'sm-actions');
     const ok = el('button', undefined, 'Close');
     actions.appendChild(ok);
     box.appendChild(actions);
     const close = this.modal(box);
     ok.addEventListener('click', close);
+
+    // Orig PageControl activates the CURRENT grid's tab (on insert, and
+    // by extension when viewing); render it initially.
+    renderTable(s.gridType);
+  }
+
+  // Standalone High Scores menu dialog — same tabbed presentation.
+  private scoresDialog(): void {
+    const scores = highScores(this.state, false, this.storage, SCORES_STORE_KEY);
+    this.scoresTableDialog(scores);
   }
 
   // --- Final standings (orig OverForm Finish) ------------------------------------
 
-  private standingsDialog(st: FinalStandings): void {
+  // FIDELITY:[highscores-modal] (rev 12): orig end-of-game sequence is
+  // Finish() → GameOver modal → HighScores(true) modal — two sequential
+  // dialogs. onClose chains the high-scores second modal.
+  private standingsDialog(st: FinalStandings, onClose?: () => void): void {
     const box = el('div');
     box.appendChild(el('h3', undefined, 'Game Over'));
     const intro = el('div');
@@ -1382,7 +1455,10 @@ export class SpaceMonopolyApp {
     actions.appendChild(ok);
     box.appendChild(actions);
     const close = this.modal(box);
-    ok.addEventListener('click', close);
+    ok.addEventListener('click', () => {
+      close();
+      onClose?.(); // orig: Finish(); then HighScores(true);
+    });
   }
 
   // --- About (static card; orig AboutForm finished/trivial — NOTES §7) ------------
