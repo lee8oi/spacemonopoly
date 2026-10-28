@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "target": "es2020", "lib": ["es2020", "dom"], "noEmit": true },
+  "files": ["scaffold.ts", "renderer.ts", "dialogs.ts"]
+}
