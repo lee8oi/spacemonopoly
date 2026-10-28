@@ -1,8 +1,10 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 1
-// Extracted from renderer.ts rev 12 (reorganization only; no behavior
-// change). Contains ALL modal/dialog presentation + modal queue + dialog CSS.
-// Rationale/history: RENDERER-NOTES.md. Scaffold untouched.
+// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 2
+// Session 18: Move Up / Move Down player reordering in the new-game dialog
+// (Players.cpp BitBtn5/BitBtn6). Rev 1 was extracted from renderer.ts rev 12
+// (reorganization only; no behavior change). Contains ALL modal/dialog
+// presentation + modal queue + dialog CSS.
+// Rationale/history: RENDERER-NOTES.md / DIALOGS-NOTES.md. Scaffold untouched.
 // ============================================================================
 
 import type {
@@ -99,6 +101,14 @@ const DIALOG_CSS = `
   border-color: #5a5a85; font-weight: 600; }
 .sm-tabs button:focus { outline: none; }
 tr.sm-newentry { background: #2e2e52; font-weight: 700; }
+/* Rev 2: players pane + reorder buttons (orig Players.cpp right column). */
+.sm-players-pane { display: flex; gap: 10px; align-items: stretch; }
+.sm-pane-left { flex: 1 1 auto; min-width: 0; }
+.sm-pane-right { display: flex; flex-direction: column; justify-content: flex-start;
+  flex: 0 0 auto; }
+.sm-btn-group { display: flex; flex-direction: column; gap: 6px; }
+.sm-playerrow { border-radius: 4px; }
+.sm-playerrow-selected { background: #2e2e52; }
 `;
 
 export function injectDialogStyles(): void {
@@ -418,27 +428,123 @@ export function newGameDialog(
   const box = el('div');
   box.appendChild(el('h3', undefined, 'New Game'));
 
+  // Session 18 (rev 2) — Move Up / Move Down reordering, orig Players.cpp:
+  //   FIDELITY:[players.cpp-updatebuts] — move pair enabled iff a row is
+  //     selected; boundary clicks silently no-op (handler guards).
+  //   FIDELITY:[players.cpp-reselect] — selection follows the moved row
+  //     (orig ItemIndex = pos ∓ 1), permitting click-walking.
+  //   FIX:[players.cpp-strcpy] — orig BitBtn5Click (Move Up) swapped names
+  //     through strcpy into char buffer[25] (overflow pattern). The port
+  //     splices live DOM node references instead. Orig BitBtn6Click (Move
+  //     Down) already used a safe AnsiString swap — replicated.
+  //   DEVIATION:[selection-model] — rev 1 rows are inline editable inputs
+  //     (not the orig listbox + Name field); selection is therefore a row
+  //     highlight driven by row click / input focus.
   const nameInputs: HTMLInputElement[] = [];
-  const listWrap = el('div');
+  let selectedIndex = -1;
+
+  // Rows live in rowsWrap (inside the left pane). All index math goes
+  // through these live queries — never a cached index baked in at build
+  // time, or moves/adds/removes would desync from the DOM.
+  const getRows = (): HTMLElement[] =>
+    Array.from(rowsWrap.children) as HTMLElement[];
+
+  const updateMoveButs = (): void => { // orig UpdateButs(), move pair only
+    moveUpBtn.disabled = selectedIndex < 0;
+    moveDownBtn.disabled = selectedIndex < 0;
+  };
+
+  const setSelected = (idx: number): void => {
+    const rows = getRows();
+    for (let i = 0; i < rows.length; i++) {
+      rows[i].classList.remove('sm-playerrow-selected');
+    }
+    selectedIndex = idx;
+    if (idx >= 0 && idx < rows.length) {
+      rows[idx].classList.add('sm-playerrow-selected');
+    }
+    updateMoveButs();
+  };
+
+  const selectRowNode = (row: HTMLElement): void => {
+    setSelected(getRows().indexOf(row));
+  };
+
+  // Swap by node reference — detach, splice, reinsert. No string copy
+  // anywhere; input values/focus ride along on the live nodes.
+  const moveSelected = (delta: number): void => {
+    const rows = getRows();
+    const pos = selectedIndex;
+    const next = pos + delta;
+    if (pos < 0 || next < 0 || next >= rows.length) return; // orig no-op guard
+    const [row] = rows.splice(pos, 1);
+    rows.splice(next, 0, row);
+    rowsWrap.replaceChildren(...rows);
+    // Keep nameInputs in step with the DOM so Go! collects the
+    // displayed order.
+    const [inp] = nameInputs.splice(pos, 1);
+    nameInputs.splice(next, 0, inp);
+    setSelected(next); // orig: ItemIndex = pos ∓ 1
+  };
+
+  // Two-pane layout: rows on the left, reorder buttons on the right
+  // (orig Players.dfm button column).
+  const listWrap = el('div', 'sm-players-pane');
+  const leftPane = el('div', 'sm-pane-left');
+  const rowsWrap = el('div');
+  leftPane.appendChild(rowsWrap);
+
   const addName = (value: string): void => {
-    const row = el('div', 'sm-row');
+    const row = el('div', 'sm-row sm-playerrow');
     const inp = el('input') as HTMLInputElement;
     inp.type = 'text';
     inp.value = value;
     nameInputs.push(inp);
+    // mousedown so selection registers before the input grabs focus;
+    // focus covers keyboard entry into a row.
+    row.addEventListener('mousedown', () => selectRowNode(row));
+    inp.addEventListener('focus', () => selectRowNode(row));
     row.appendChild(inp);
     const del = el('button', undefined, '\u2212');
     del.addEventListener('click', () => {
       if (nameInputs.length > 1) {
+        const rows = getRows();
+        const idx = rows.indexOf(row); // dynamic index — survives reorders
         nameInputs.splice(nameInputs.indexOf(inp), 1);
         row.remove();
+        if (selectedIndex === idx) {
+          // VCL ListBox clears the selection when the selected item is
+          // deleted → UpdateButs disables the move pair. Faithful.
+          setSelected(-1);
+        } else if (selectedIndex > idx) {
+          setSelected(selectedIndex - 1); // same row stays selected
+        } else {
+          setSelected(selectedIndex); // re-sync highlight against new DOM
+        }
       }
     });
     row.appendChild(del);
-    listWrap.appendChild(row);
+    rowsWrap.appendChild(row);
+    // Newly added row is not selected (orig Add does not select it).
   };
+
   addName('Player 1');
   addName('Player 2');
+
+  const rightPane = el('div', 'sm-pane-right');
+  const btnGroup = el('div', 'sm-btn-group');
+  const moveUpBtn = el('button', undefined, 'Move Up');    // orig BitBtn5
+  const moveDownBtn = el('button', undefined, 'Move Down'); // orig BitBtn6
+  moveUpBtn.disabled = true;   // orig .dfm: Enabled = false initially
+  moveDownBtn.disabled = true;
+  moveUpBtn.addEventListener('click', () => moveSelected(-1));
+  moveDownBtn.addEventListener('click', () => moveSelected(1));
+  btnGroup.appendChild(moveUpBtn);
+  btnGroup.appendChild(moveDownBtn);
+  rightPane.appendChild(btnGroup);
+
+  listWrap.appendChild(leftPane);
+  listWrap.appendChild(rightPane);
   box.appendChild(listWrap);
 
   const addBtn = el('button', undefined, '+ Add player');
