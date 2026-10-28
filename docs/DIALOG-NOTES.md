@@ -1,9 +1,9 @@
-# DIALOGS-NOTES.md — Player Reorder + End-Game Regression Record (rev 3) + Session 19 Build Gate
+# DIALOGS-NOTES.md — Session 18–19 Record (rev 4)
 
-**Artifacts:** `dialogs-ts` (code, rev 2 — unchanged this session); `dialogs-notes` (this document)
-**Rev:** 3 — Session 18 record (closed) + Session 19 build-gate record (closed)
+**Artifacts:** `dialogs-ts` (code, rev 3); `dialogs-notes` (this document)
+**Rev:** 4 — Sessions 18 (closed) + 19 build gate (closed, §8) + 19 cosmetics (§10)
 **Sessions:** 18, 19
-**Files affected, Session 19:** build tooling only — new `tsconfig.json`, revised `build.sh`. **Zero edits to `scaffold.ts`, `renderer.ts`, `dialogs.ts`.**
+**Files affected:** Session 19a: tooling only (`tsconfig.json` new, `build.sh` gated; zero shipped-code edits). Session 19b: `dialogs.ts` only (rev 3; scaffold, renderer untouched).
 
 ---
 
@@ -40,6 +40,11 @@
 - `FIX:[rev-2 first-issuance defects — reissued corrected same session]`
 - `FIX:[standings-networth-typo — on-disk dialogs.ts read row.netWorth vs scaffold's FinalStanding.netWealth; one-line rename, verified fix]`
 - `FIX:[pipeline-no-typecheck — Session 19: tsc gate added to build.sh; infrastructure only, no shipped-behavior change, no DEVIATION warranted]`
+- `FIDELITY:[players.dfm-caption — dialog heading "Player Information", not "New Game"]` *(Session 19b)*
+- `FIDELITY:[players.cpp-maxlength — name inputs MaxLength = 15 (orig comment: "Maximum name length=15 chars + NULL")]` *(Session 19b)*
+- `FIDELITY:[players.cpp-updatebuts-go — Go! disabled iff list empty, per orig UpdateButs() BitBtn3 branch]` *(Session 19b)*
+- `FIDELITY:[players.cpp-btbtn2click-remove-guard-dropped — orig removes unconditionally; port's length>1 guard removed so the list CAN reach empty]` *(Session 19b)*
+- `DEVIATION:[prefill-single — port prefills one "Player 1" row; orig starts empty (Go! disabled on entry). Lee-approved, solo quick-start]` *(Session 19b)*
 
 ## 5. REGRESSION REPORT — CLOSED
 
@@ -71,14 +76,14 @@
 
 ## 7. Out-of-Scope Observations (logged, not acted on)
 
-- Dialog caption: orig "Player Information"; port "New Game".
-- Go! disable vs. status message when list empty.
-- Name length: orig `MaxLength = 15`; port unbounded.
-- Tournament fallback: scaffold `startGame` verified to replicate orig 1-player TOURNAMENT → CLASSIC downgrade (`QUIRK-FIDELITY:[tournament-downgrade]`) — closed from prior open item.
-- `doConclude(true)` after conclusion: End Game menu re-enables post-game (`endGame.disabled = !s.progress`) and force=true bypasses the `concluded` guard — clicking End Game after a game concludes re-runs the tail (re-insert + `finishStandings` over post-`createComs` state). Candidate defect; needs a decision (guard vs. orig behavior verification). **This is bootstrap open item #2 — next priority after cosmetics if taken in order.**
+- ~~Dialog caption: orig "Player Information"; port "New Game".~~ **DONE Session 19b (§10).**
+- ~~Go! disable vs. status message when list empty.~~ **DONE Session 19b (§10).**
+- ~~Name length: orig `MaxLength = 15`; port unbounded.~~ **DONE Session 19b (§10).**
+- Tournament fallback: scaffold `startGame` verified to replicate orig 1-player TOURNAMENT → CLASSIC downgrade (`QUIRK-FIDELITY:[tournament-downgrade]`) — closed from prior open item. *(Relevant to solo play: one player + Tournament selected auto-downgrades to Classic, faithful.)*
+- `doConclude(true)` after conclusion: End Game menu re-enables post-game (`endGame.disabled = !s.progress`) and force=true bypasses the `concluded` guard — clicking End Game after a game concludes re-runs the tail (re-insert + `finishStandings` over post-`createComs` state). Candidate defect; needs a decision (guard vs. orig behavior verification). **Bootstrap open item #2 — now the top open item.**
 - Carried forward: TOURNAMENT spot-check (rev-11 R15 caveat), unrun secondary checks, verify-before-ship trivia, tile-art extraction seam.
 
-## 8. SESSION 19 — BUILD GATE (bootstrap open item #1) — CLOSED
+## 8. SESSION 19a — BUILD GATE (bootstrap open item #1) — CLOSED
 
 ### 8.1 Objective
 
@@ -110,14 +115,56 @@ Make type errors fail the build, per Session 18 §5 mitigation 1 — the single 
 
 ### 8.5 Baseline amendment
 
-Regression baseline gains: **gated build passes (`./build.sh` green)**; expected-negative: sabotaged type error blocks the bundle.
+Regression baseline gains: **gated build passes (`./build.sh` green)**; expected-negative: sabotaged type error blocks the bundle. Going forward, transcription drift against the types is caught at build time before it reaches `bundle.js` — the Session 18 failure mode is structurally closed.
 
 ## 9. Open Items (post-Session 19, priority order)
 
 1. ~~Build gate~~ **CLOSED (§8).**
-2. `doConclude(true)` post-game re-entry (see §7).
-3. Cosmetic backlog per orig `Players.cpp`/`.dfm` (see §7): caption, Go!-empty disable, `MaxLength = 15`. Requires source citations before writing diffs.
+2. `doConclude(true)` post-game re-entry (see §7) — **top open item.**
+3. ~~Cosmetic backlog~~ **DONE, pending verification (§10).**
 4. Carried from §7: TOURNAMENT spot-check, unrun secondary checks, verify-before-ship trivia sweep, tile-art extraction seam.
 
+## 10. SESSION 19b — COSMETIC BACKLOG (bootstrap open item #3)
+
+### 10.1 Source verification (Players.cpp + Players.dfm, submitted this session)
+
+| Item | Original evidence | Port before |
+|---|---|---|
+| Dialog caption | `.dfm` TPlayInfo: `Caption "Player Information"` | heading read "New Game" |
+| Name length | `.dfm` Edit1 `MaxLength` property; `BitBtn1Click` comment "Maximum name length=15 chars + NULL" | inputs unbounded |
+| Go! on empty list | `UpdateButs()`: `Count == 0` → `BitBtn3 (Go!) Enabled = false`, else `true` | never disabled; click shows status message instead |
+
+All three claims verified against submitted sources — no unverified claims in the resulting code.
+
+### 10.2 Design decision — option C (Lee's call)
+
+The Go! rule is only observable if the list can reach empty. In the port the empty state was previously **unreachable**: rev 1 prefilled two rows AND guarded the per-row remove buttons with `nameInputs.length > 1`. Options considered: (A) add the rule as dead code; (B) full fidelity — also drop the prefill and start empty like orig; (C) drop the remove-guard and disable Go! at zero, keeping a (now single-row) prefill. **Chosen: C**, with Lee's amendment: prefill is **one** row ("Player 1") rather than two — solo quick-start; a second player is one "+ Add player" click away.
+
+- `DEVIATION:[prefill-single]` replaces the implicit rev-1 two-row prefill (which was itself undocumented relative to orig's empty start — now properly ledgered).
+- Orig's `BitBtn3Click` guards with `if (numplays > 0)`; the port's dead `names.length < 1` status branch is **removed** — its job moves to the disabled state, matching orig mechanics.
+- `status` element retained (layout parity with other dialogs) but now idle in `newGameDialog`.
+- Orig `UpdateButs()` also conditions a shared **Remove** button on selection; the port's per-row "−" buttons are inherently row-scoped, so that clause is subsumed under the existing `DEVIATION:[selection-model]` — not separately implemented.
+
+### 10.3 Implementation summary (dialogs.ts rev 3)
+
+All changes confined to `newGameDialog`:
+
+1. Heading `'New Game'` → `'Player Information'`.
+2. `addName`: `inp.maxLength = 15;` (hard clamp at entry, as the VCL edit control did; Go!'s existing `trim()` retained).
+3. Prefill: single `addName('Player 1')`.
+4. Remove-guard dropped: per-row "−" deletes unconditionally (orig `BitBtn2Click`); last-row deletion falls through to `setSelected(-1)`.
+5. `updateMoveButs()` → `updateButs()` (orig name), now also setting `go.disabled = nameInputs.length === 0`. Called from `setSelected` (covers removes), from the Add button (covers adds — orig `BitBtn1Click` calls `UpdateButs` post-add), and initial state set once at `go` creation (`go.disabled = nameInputs.length === 0;`). Add button's count cap (`MAX_PLAYERS`) unchanged.
+6. Go! handler: unreachable empty-list branch deleted.
+
+### 10.4 Verification checklist (Lee to run)
+
+1. `./build.sh` green (gate now guards transcription too).
+2. New-game dialog: heading reads "Player Information"; one prefilled row "Player 1"; Go! enabled.
+3. Empty the list (remove the last row) → move pair AND Go! all disabled; no status message.
+4. "+ Add player" → Go! re-enables.
+5. Type >15 chars in a name input → clamped at 15.
+6. Remove-while-selected, reorder, click-walking, Go! turn-order commit — re-run Session 18 checks (same code paths touched).
+7. Solo game start + Tournament selected → auto-downgrades to CLASSIC (existing quirk; easiest to confirm now that solo is the default start).
+
 ---
-*Session 18: player reorder + end-game regression — closed. Session 19: build gate — closed. Next: Lee's call; default candidate per bootstrap = cosmetic backlog, pending source excerpts.*
+*Session 18: player reorder + end-game regression — closed. Session 19a: build gate — closed. Session 19b: cosmetic backlog — code issued rev 3, verification pending. Next: §7 `doConclude(true)` post-game re-entry (needs orig `OverForm.cpp` / end-menu sources), or Lee's call.*

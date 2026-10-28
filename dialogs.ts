@@ -1,9 +1,12 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 2
+// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 3
 // Session 18: Move Up / Move Down player reordering in the new-game dialog
 // (Players.cpp BitBtn5/BitBtn6). Rev 1 was extracted from renderer.ts rev 12
 // (reorganization only; no behavior change). Contains ALL modal/dialog
 // presentation + modal queue + dialog CSS.
+// Session 19b (rev 3): cosmetic backlog — caption "Player Information",
+// name MaxLength 15, Go! disabled at empty list (orig UpdateButs), remove
+// guard dropped, single-row prefill (DEVIATION:[prefill-single]).
 // Rationale/history: RENDERER-NOTES.md / DIALOGS-NOTES.md. Scaffold untouched.
 // ============================================================================
 
@@ -426,7 +429,8 @@ export function newGameDialog(
 ): void {
   const s = state;
   const box = el('div');
-  box.appendChild(el('h3', undefined, 'New Game'));
+  // FIDELITY:[players.dfm-caption] — orig TPlayInfo form caption.
+  box.appendChild(el('h3', undefined, 'Player Information'));
 
   // Session 18 (rev 2) — Move Up / Move Down reordering, orig Players.cpp:
   //   FIDELITY:[players.cpp-updatebuts] — move pair enabled iff a row is
@@ -440,6 +444,17 @@ export function newGameDialog(
   //   DEVIATION:[selection-model] — rev 1 rows are inline editable inputs
   //     (not the orig listbox + Name field); selection is therefore a row
   //     highlight driven by row click / input focus.
+  //
+  // Session 19b (rev 3) — cosmetic backlog, orig Players.cpp/.dfm:
+  //   FIDELITY:[players.cpp-maxlength] — name inputs clamp at 15 chars
+  //     (orig Edit1 MaxLength; BitBtn1Click comment "15 chars + NULL").
+  //   FIDELITY:[players.cpp-updatebuts-go] — Go! disabled iff the list is
+  //     empty (orig UpdateButs() BitBtn3 branch).
+  //   FIDELITY:[players.cpp-btbtn2click-remove-guard-dropped] — orig
+  //     removes unconditionally; the port's length>1 guard is gone so the
+  //     list CAN reach empty.
+  //   DEVIATION:[prefill-single] — port prefills ONE "Player 1" row; orig
+  //     starts empty (Go! disabled on entry). Lee-approved solo quick-start.
   const nameInputs: HTMLInputElement[] = [];
   let selectedIndex = -1;
 
@@ -449,9 +464,10 @@ export function newGameDialog(
   const getRows = (): HTMLElement[] =>
     Array.from(rowsWrap.children) as HTMLElement[];
 
-  const updateMoveButs = (): void => { // orig UpdateButs(), move pair only
+  const updateButs = (): void => { // orig UpdateButs()
     moveUpBtn.disabled = selectedIndex < 0;
     moveDownBtn.disabled = selectedIndex < 0;
+    go.disabled = nameInputs.length === 0; // orig: BitBtn3 branch
   };
 
   const setSelected = (idx: number): void => {
@@ -463,7 +479,7 @@ export function newGameDialog(
     if (idx >= 0 && idx < rows.length) {
       rows[idx].classList.add('sm-playerrow-selected');
     }
-    updateMoveButs();
+    updateButs();
   };
 
   const selectRowNode = (row: HTMLElement): void => {
@@ -499,6 +515,7 @@ export function newGameDialog(
     const inp = el('input') as HTMLInputElement;
     inp.type = 'text';
     inp.value = value;
+    inp.maxLength = 15; // FIDELITY:[players.cpp-maxlength] — orig Edit1
     nameInputs.push(inp);
     // mousedown so selection registers before the input grabs focus;
     // focus covers keyboard entry into a row.
@@ -507,20 +524,19 @@ export function newGameDialog(
     row.appendChild(inp);
     const del = el('button', undefined, '\u2212');
     del.addEventListener('click', () => {
-      if (nameInputs.length > 1) {
-        const rows = getRows();
-        const idx = rows.indexOf(row); // dynamic index — survives reorders
-        nameInputs.splice(nameInputs.indexOf(inp), 1);
-        row.remove();
-        if (selectedIndex === idx) {
-          // VCL ListBox clears the selection when the selected item is
-          // deleted → UpdateButs disables the move pair. Faithful.
-          setSelected(-1);
-        } else if (selectedIndex > idx) {
-          setSelected(selectedIndex - 1); // same row stays selected
-        } else {
-          setSelected(selectedIndex); // re-sync highlight against new DOM
-        }
+      // Orig BitBtn2Click deletes unconditionally — the list may empty.
+      const rows = getRows();
+      const idx = rows.indexOf(row); // dynamic index — survives reorders
+      nameInputs.splice(nameInputs.indexOf(inp), 1);
+      row.remove();
+      if (selectedIndex === idx) {
+        // VCL ListBox clears the selection when the selected item is
+        // deleted → UpdateButs disables the move pair. Faithful.
+        setSelected(-1);
+      } else if (selectedIndex > idx) {
+        setSelected(selectedIndex - 1); // same row stays selected
+      } else {
+        setSelected(selectedIndex); // re-sync highlight against new DOM
       }
     });
     row.appendChild(del);
@@ -528,8 +544,7 @@ export function newGameDialog(
     // Newly added row is not selected (orig Add does not select it).
   };
 
-  addName('Player 1');
-  addName('Player 2');
+  addName('Player 1'); // DEVIATION:[prefill-single]
 
   const rightPane = el('div', 'sm-pane-right');
   const btnGroup = el('div', 'sm-btn-group');
@@ -549,7 +564,10 @@ export function newGameDialog(
 
   const addBtn = el('button', undefined, '+ Add player');
   addBtn.addEventListener('click', () => {
-    if (nameInputs.length < MAX_PLAYERS) addName(`Player ${nameInputs.length + 1}`);
+    if (nameInputs.length < MAX_PLAYERS) {
+      addName(`Player ${nameInputs.length + 1}`);
+      updateButs(); // orig BitBtn1Click calls UpdateButs() post-add
+    }
   });
   box.appendChild(addBtn);
 
@@ -580,6 +598,7 @@ export function newGameDialog(
   const status = el('div', 'sm-status');
   const actions = el('div', 'sm-actions');
   const go = el('button', undefined, 'Go!');
+  go.disabled = nameInputs.length === 0; // orig UpdateButs() initial state
   const cancel = el('button', undefined, 'Cancel');
   actions.appendChild(go);
   actions.appendChild(cancel);
@@ -590,13 +609,11 @@ export function newGameDialog(
   cancel.addEventListener('click', close);
 
   go.addEventListener('click', () => {
+    // Reachable only when non-empty — Go! is disabled at empty per orig
+    // UpdateButs(); no status-message fallback (rev 2's branch removed).
     const names = nameInputs
       .map((inp, i) => inp.value.trim() || `Player ${i + 1}`)
       .slice(0, MAX_PLAYERS);
-    if (names.length < 1) {
-      status.textContent = 'At least one player required.';
-      return;
-    }
     // FIDELITY: orig grid-size MENU and New Game are independent —
     // a new game at the SAME size works with the board as it stands
     // (circles preserved; see scaffold startGame). Only a genuine
