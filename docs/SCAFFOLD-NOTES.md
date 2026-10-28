@@ -33,10 +33,10 @@ UNRESOLVED (documentary, non-blocking — port implements the observed
 spec regardless).
 
 **STATUS (Session 19): SCAFFOLD UNTOUCHED; TOOLCHAIN GATE ADDED;
-COMMENTS CLAIM NOW REALITY-CHECKED.** scaffold.ts was NOT modified this
-session (freeze discipline intact; the Session-13 startGame amendment
-remains the only change since freeze). What changed is the toolchain
-around it: a minimal `tsconfig.json` (es2020 + dom lib) now exists, and
+COMMENTS CLAIM NOW TRUE.** scaffold.ts was NOT modified this session
+(freeze discipline intact; the Session-13 startGame amendment remains
+the only change since freeze). What changed is the toolchain around
+it: a minimal `tsconfig.json` (es2022 + dom lib) now exists, and
 `build.sh` runs `tsc && npx esbuild …` — type errors abort the build
 before `bundle.js` is written. The first honest tsc run over all three
 files produced 58 errors that were ALL lib-target false alarms (BigInt,
@@ -44,16 +44,14 @@ Array.from, Set, string literals at a default pre-ES2015 lib) — **zero
 genuine type errors**, retroactively confirming the Session-18
 `netWealth` rename (DIALOGS-NOTES §§5) was the only latent type
 breakage ever in the tree. Full record: DIALOGS-NOTES.md rev 5 §8.
-DISCREPANCY LOGGED (§8): scaffold.ts's header comment claims "tsconfig
-target ES2022+ (static {} block, BigInt literals)" — written before any
-tsconfig existed; the created one says es2020 and the gate passes clean
-(class static blocks are compiler-supported syntax regardless of target;
-BigInt literals require ≥ES2020). Trivial resolution pending Lee's pick:
-bump tsconfig to es2022 (makes the comment true, tooling-only) or amend
-the comment. Corroborations this session: FIX:[cumulative-worth]
-re-confirmed at source (OverForm.cpp re-read), and concludeGame's tail /
-renderer doConclude composition verified faithful to orig
-EndGame1Click + BitBtn1Click (DIALOGS-NOTES §11).
+The tsconfig-target/header-comment discrepancy (§8) is RESOLVED: the
+tsconfig was bumped es2020 → es2022 (tooling-only, one line; gate
+rerun clean) — the scaffold header's "target ES2022+" claim is now
+literally true, and the frozen file stayed untouched. Corroborations
+this session: FIX:[cumulative-worth] re-confirmed at source (OverForm.cpp
+re-read), and concludeGame's tail / renderer doConclude composition
+verified faithful to orig EndGame1Click + BitBtn1Click (DIALOGS-NOTES
+§11).
 
 ---
 
@@ -368,7 +366,7 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   regressions vs the live path: (1) `atoi` into `__int64` — atoi returns
   C int, silently truncating large/garbage input (ComInfoForm upgraded
   to `large(text)`); (2) BitBtn3 max-buy uses the stale global `maxbuy`
-  WITHOUT recomputing (ComInfoForm's BitBtn8 calls Info() first — our
+  WITHOUT recomcomputing (ComInfoForm's BitBtn8 calls Info() first — our
   port recomputes). Handlers re-enable ComInfo and call Info() after
   trading — orchestration only. No `Stock->Show()` located in any file
   read; evidence indicates unreachable dead code from an earlier design
@@ -391,21 +389,16 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
 - ~~Trading gate (sels)~~ RESOLVED: UI-level enforcement inside the
   trade dialog (orig InfoButs), confirmed ComInfoForm.cpp.
 - OPTIONAL: `grep "Stock->"` across .cpp files (low priority).
-- **tsconfig target vs. header comment (Session 19)**: scaffold.ts's
-  header says "tsconfig target ES2022+ (static {} block, BigInt
-  literals)" — authored before any tsconfig existed. The created
-  `tsconfig.json` says **es2020**, and the gate passes clean (static
-  blocks are compiler-supported syntax regardless of `target`; BigInt
-  literals require ≥ES2020, which is satisfied). Functionally moot
-  (esbuild owns the real output target), but comment-vs-reality drift.
-  RECOMMENDED resolution: bump tsconfig.json to
-  `target: es2022 / lib: es2022, dom` (one-word edit, tooling-only,
-  makes the documented claim true). Alternative: amend the scaffold
-  comment (would be the first edit to a frozen file over a comment —
-  disfavored). Pending Lee's one-word decision. Session-19 note: with
-  no tsconfig prior to Session 19, the comment described an intention
-  that was never instantiated — this session's gate is its first
-  contact with reality.
+- ~~tsconfig target vs. header comment (Session 19)~~ **RESOLVED**:
+  scaffold.ts's header said "tsconfig target ES2022+ (static {} block,
+  BigInt literals)" — authored before any tsconfig existed; the
+  Session-19-created one initially said es2020. Resolution (Lee):
+  bumped `target`/`lib` to es2022 (`es2022, dom`), gate rerun clean.
+  The documented claim is now literally true; the frozen scaffold
+  file was never touched. For the record: both targets passed the
+  gate identically (static blocks are compiler-supported syntax
+  regardless of `target`; BigInt literals need ≥ES2020), so the
+  bump was documentation-truth alignment, not a functional fix.
 
 ## 9. Session History (condensed)
 
@@ -460,17 +453,19 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   (Session 13/14 banners, verification stamps, ledger updates).
 - **Session 19 (toolchain + verification; NO scaffold code change)**:
   build gate added (DIALOGS-NOTES §8): `tsconfig.json` created
-  (es2020 + dom after a 58-false-error first run), `build.sh` gated
-  `tsc && npx esbuild …`, negative-tested. Scaffold byte-identical
-  before/after — the clean tsc pass is the toolchain's retroactive
-  confirmation of Sessions 12–13 freeze quality. Sessions 19b/19c
-  (dialogs cosmetics, doConclude verification) recorded in
-  DIALOGS-NOTES §§10–11; their findings relevant here: FIX:[cumulative-
-  worth] re-confirmed at source (§2.7), concludeGame tail verified
-  faithful to orig EndGame1Click/BitBtn1Click incl. the renderer's
-  hand-composed doConclude (RENDERER-NOTES rev 12 re-sync warning —
-  currently in sync), and the tsconfig-target/header-comment
-  discrepancy logged (§8). Sessions 15–18 histories live in
+  (initially es2020 + dom after a 58-false-error first run, then
+  bumped to es2022 per the header-comment discrepancy — §8), `build.sh`
+  gated `tsc && npx esbuild …`, negative-tested, green both before and
+  after the es2022 bump. Scaffold byte-identical throughout — the
+  clean tsc pass is the toolchain's retroactive confirmation of
+  Sessions 12–13 freeze quality. Sessions 19b/19c (dialogs cosmetics,
+  doConclude verification) recorded in DIALOGS-NOTES §§10–11; their
+  findings relevant here: FIX:[cumulative-worth] re-confirmed at
+  source (§2.7), concludeGame tail verified faithful to orig
+  EndGame1Click/BitBtn1Click incl. the renderer's hand-composed
+  doConclude (RENDERER-NOTES rev 12 re-sync warning — currently in
+  sync), and the tsconfig-target/header-comment discrepancy logged
+  and resolved (§8). Sessions 15–18 histories live in
   RENDERER-NOTES.md (renderer phase) and DIALOGS-NOTES.md (Sessions
   18–19); this archive intentionally records only scaffold-relevant
   events.
@@ -480,8 +475,8 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
 - [ ] Currency symbol raw byte (assume £, verify)
 - [ ] SMMain.dfm captions (menu labels 16by16 etc. — display quirk #6)
 - [ ] Preferences persistence option selected (a/b/c)
-- [ ] tsconfig target resolution (es2020 → es2022 bump recommended, or
-      header-comment amendment) — Session 19 discrepancy, §8
+- [x] ~~tsconfig target resolution~~ (Session 19: bumped to es2022,
+      gate green — §8; header claim now true, scaffold untouched)
 - [x] Trading gate enforcement point decided (UI-level, InfoButs)
 - [x] StockForm.h existence resolved (superseded dead code)
 - [x] renderer.ts import surface agreed (ActionHooks etc. as-is)
