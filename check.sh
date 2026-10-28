@@ -1,1 +1,1 @@
-tsc --noEmit --target es2020 --lib es2020,dom scaffold.ts renderer.ts dialogs.ts
+tsc --noEmit --target es2022 --lib es2022,dom scaffold.ts renderer.ts dialogs.ts
