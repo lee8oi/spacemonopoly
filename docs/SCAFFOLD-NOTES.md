@@ -32,6 +32,29 @@ unexamined candidate file, the mechanism question is closed as
 UNRESOLVED (documentary, non-blocking — port implements the observed
 spec regardless).
 
+**STATUS (Session 19): SCAFFOLD UNTOUCHED; TOOLCHAIN GATE ADDED;
+COMMENTS CLAIM NOW REALITY-CHECKED.** scaffold.ts was NOT modified this
+session (freeze discipline intact; the Session-13 startGame amendment
+remains the only change since freeze). What changed is the toolchain
+around it: a minimal `tsconfig.json` (es2020 + dom lib) now exists, and
+`build.sh` runs `tsc && npx esbuild …` — type errors abort the build
+before `bundle.js` is written. The first honest tsc run over all three
+files produced 58 errors that were ALL lib-target false alarms (BigInt,
+Array.from, Set, string literals at a default pre-ES2015 lib) — **zero
+genuine type errors**, retroactively confirming the Session-18
+`netWealth` rename (DIALOGS-NOTES §§5) was the only latent type
+breakage ever in the tree. Full record: DIALOGS-NOTES.md rev 5 §8.
+DISCREPANCY LOGGED (§8): scaffold.ts's header comment claims "tsconfig
+target ES2022+ (static {} block, BigInt literals)" — written before any
+tsconfig existed; the created one says es2020 and the gate passes clean
+(class static blocks are compiler-supported syntax regardless of target;
+BigInt literals require ≥ES2020). Trivial resolution pending Lee's pick:
+bump tsconfig to es2022 (makes the comment true, tooling-only) or amend
+the comment. Corroborations this session: FIX:[cumulative-worth]
+re-confirmed at source (OverForm.cpp re-read), and concludeGame's tail /
+renderer doConclude composition verified faithful to orig
+EndGame1Click + BitBtn1Click (DIALOGS-NOTES §11).
+
 ---
 
 ## 1. Architectural Decisions (with reasoning)
@@ -84,8 +107,6 @@ original's Game.cpp boot state only.
   allocates without initializing — confirms the necessity of the port's
   explicit-initial-value Grid/resize signatures (FIX:[zero-init]).
 
----
-
 ## 2. Original Bug Fixes (FIX tags, in full)
 
 1. **[zero-init]** Orig `new ELT[_y]` leaves POD cells as garbage in
@@ -108,7 +129,8 @@ original's Game.cpp boot state only.
    worth` declared OUTSIDE the player loop; `worth` accumulated across
    players so the standings list showed each player's worth INCLUDING
    all previous players'. Winner unaffected (separate Total() call).
-   Port computes per-player fresh.
+   Port computes per-player fresh. *(Re-confirmed at source, Session
+   19c — OverForm.cpp re-read; see DIALOGS-NOTES rev 5 §11.)*
 8. **[comma-negative]** Orig comma() counts a leading '-' as a digit,
    garbling negative grouping. Port groups digits only. No observable
    difference in practice (money never negative in-game; buys capped).
@@ -170,7 +192,10 @@ original's Game.cpp boot state only.
    the slot is re-founded via NewCompany (CLASSIC-only reset). Zombie
    wealth persists in standings/high-scores indefinitely.
 3. **[tournament-downgrade]** 1-player TOURNAMENT silently downgrades
-   to CLASSIC (Players.cpp BitBtn3Click).
+   to CLASSIC (Players.cpp BitBtn3Click). *(Session 19 note: with the
+   dialogs' single-player prefill [DEVIATION:[prefill-single],
+   DIALOGS-NOTES §10], the default quick-start game is now the 1-player
+   case — this quirk fires on every solo Tournament selection.)*
 4. **[tournament-maxturns]** TOURNAMENT ends at maxturns+1 (off-by-one
    preserved).
 5. **[newcompany-noop]** If all 5 company slots exist, NewCompany is a
@@ -218,7 +243,8 @@ original's Game.cpp boot state only.
 - (Session 13 read) Players.cpp BitBtn5/BitBtn6 Move Up/Down swap via
   `char buffer[25]` strcpy — latent overflow if a name exceeds 24
   chars; port (when/if reorder buttons are added) must swap by
-  reference, not copy this pattern.
+  reference, not copy this pattern. *(DONE Session 18 — DOM node
+  splice; see DIALOGS-NOTES §2.)*
 
 ## 6. Renderer Specifications (decoded from source; renderer.ts consumer)
 
@@ -272,6 +298,8 @@ Screen->Refresh()
 - Panel3 (turn counter): Caption = turn
 - MenuUpdate (contextual): CreateNewGrid/GridSize/NewGame/Preferences
   enabled when !progress; EndGame enabled when progress.
+  *(Session 19c: renderer mainUpdate()'s port of MenuUpdate verified
+  exact-polarity on all five gates — DIALOGS-NOTES §11.4.)*
 
 ### 6.6 Image1MouseDown / Image1MouseMove (SMMain.cpp)
 - MouseDown on the grid: convert pixel → cell coords via integer div
@@ -363,6 +391,21 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
 - ~~Trading gate (sels)~~ RESOLVED: UI-level enforcement inside the
   trade dialog (orig InfoButs), confirmed ComInfoForm.cpp.
 - OPTIONAL: `grep "Stock->"` across .cpp files (low priority).
+- **tsconfig target vs. header comment (Session 19)**: scaffold.ts's
+  header says "tsconfig target ES2022+ (static {} block, BigInt
+  literals)" — authored before any tsconfig existed. The created
+  `tsconfig.json` says **es2020**, and the gate passes clean (static
+  blocks are compiler-supported syntax regardless of `target`; BigInt
+  literals require ≥ES2020, which is satisfied). Functionally moot
+  (esbuild owns the real output target), but comment-vs-reality drift.
+  RECOMMENDED resolution: bump tsconfig.json to
+  `target: es2022 / lib: es2022, dom` (one-word edit, tooling-only,
+  makes the documented claim true). Alternative: amend the scaffold
+  comment (would be the first edit to a frozen file over a comment —
+  disfavored). Pending Lee's one-word decision. Session-19 note: with
+  no tsconfig prior to Session 19, the comment described an intention
+  that was never instantiated — this session's gate is its first
+  contact with reality.
 
 ## 9. Session History (condensed)
 
@@ -415,14 +458,34 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   contains no board-clearing logic, the circles-survive mechanism is
   CLOSED AS UNRESOLVED (documentary). Notes files made current
   (Session 13/14 banners, verification stamps, ledger updates).
+- **Session 19 (toolchain + verification; NO scaffold code change)**:
+  build gate added (DIALOGS-NOTES §8): `tsconfig.json` created
+  (es2020 + dom after a 58-false-error first run), `build.sh` gated
+  `tsc && npx esbuild …`, negative-tested. Scaffold byte-identical
+  before/after — the clean tsc pass is the toolchain's retroactive
+  confirmation of Sessions 12–13 freeze quality. Sessions 19b/19c
+  (dialogs cosmetics, doConclude verification) recorded in
+  DIALOGS-NOTES §§10–11; their findings relevant here: FIX:[cumulative-
+  worth] re-confirmed at source (§2.7), concludeGame tail verified
+  faithful to orig EndGame1Click/BitBtn1Click incl. the renderer's
+  hand-composed doConclude (RENDERER-NOTES rev 12 re-sync warning —
+  currently in sync), and the tsconfig-target/header-comment
+  discrepancy logged (§8). Sessions 15–18 histories live in
+  RENDERER-NOTES.md (renderer phase) and DIALOGS-NOTES.md (Sessions
+  18–19); this archive intentionally records only scaffold-relevant
+  events.
 
 ## 10. Verify-before-renderer checklist
 
 - [ ] Currency symbol raw byte (assume £, verify)
 - [ ] SMMain.dfm captions (menu labels 16by16 etc. — display quirk #6)
 - [ ] Preferences persistence option selected (a/b/c)
+- [ ] tsconfig target resolution (es2020 → es2022 bump recommended, or
+      header-comment amendment) — Session 19 discrepancy, §8
 - [x] Trading gate enforcement point decided (UI-level, InfoButs)
 - [x] StockForm.h existence resolved (superseded dead code)
 - [x] renderer.ts import surface agreed (ActionHooks etc. as-is)
 - [x] R2 new-game board behavior resolved + verified (Sessions 13–14:
       observed spec implemented, 5/5 playtest)
+- [x] Type-check baseline established (Session 19: tsc clean over all
+      three files; gate negative-tested — DIALOGS-NOTES §8.4)

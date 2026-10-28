@@ -1,14 +1,16 @@
 # RENDERER-NOTES.md — Annotation Archive for renderer.ts + dialogs.ts
 
 Companion to `renderer.ts` (UI layer, rev 13 — chrome/board/turn-flow) and
-`dialogs.ts` (dialog layer, rev 1 — all modal/dialog presentation; split
+`dialogs.ts` (dialog layer, rev 3 — all modal/dialog presentation; split
 out of renderer.ts rev 12 in Session 17). Mirrors the scaffold
 convention: the code carries only terse one-line tags; this document
 holds the full rationale, revision history, and open items. Keep in sync
 with future findings; do not grow the code instead.
 
 Scaffold (logic layer, Session-13-amended) and its own archive:
-SCAFFOLD-NOTES.md.
+SCAFFOLD-NOTES.md. Active session record for dialogs.ts work (Sessions
+18–19 onward): DIALOGS-NOTES.md — this archive now carries pointers to
+it rather than duplicating its content.
 
 ---
 
@@ -303,9 +305,9 @@ implications.
   surfacing preserved).
 - **EAGER CAPTURE (correctness detail)**: table rows are assembled in
   the action hooks, NOT lazily at modal-open time. The DOM modals are
-  QUEUED, and a later chained event inside one action() (merger →
-  split) mutates state before earlier dialogs open; lazy reads would
-  present mutated numbers. Split: `sharesBefore` snapshotted before
+  QUEUED, and a later chained event inside action() (merger → split)
+  mutates state before earlier dialogs open; lazy reads would present
+  mutated numbers. Split: `sharesBefore` snapshotted before
   comSplitHook, `sharesAfter` read immediately after (both stored).
   Merger: absorbed holdings snapshotted before mergerHook, survivor
   holdings + moneyEarned computed after (moneyEarned = absorbed
@@ -491,6 +493,52 @@ acceptance bar for the split.
   drift reported. Rev 13 / dialogs rev 1 accepted as the new canonical
   source of truth for their respective files.
 
+### dialogs.ts rev 2 (Session 18) — POINTER ENTRY
+Move Up / Move Down player reordering in the new-game dialog (orig
+Players.cpp BitBtn5/BitBtn6, right-column pair, selection-follows-move)
+plus the Session-18 end-game regression (on-disk transcription drift:
+`row.netWorth` vs scaffold's `netWealth`) and its diagnosis/fix.
+Renderer.ts untouched (rev 13 continues). **Full record:
+DIALOGS-NOTES.md rev 5, §§1–6.**
+
+### (Session 19 — tooling; no code change to either file)
+Build gate added (bootstrap open item #1): new minimal `tsconfig.json`
+(es2020 + dom lib; the 58-error first run was all lib-target false
+alarms — zero genuine type errors) and `build.sh` now runs
+`tsc && npx esbuild …` — type errors abort the build before
+`bundle.js` is written. Negative-tested. **Record:
+DIALOGS-NOTES.md rev 5 §8.** Consequence for this archive's conventions:
+transcription drift between artifact and disk is now caught at build
+time — the Session 18 failure mode is structurally closed, though the
+re-verify-on-disk-after-reissue rule (§4) remains standing practice.
+
+### dialogs.ts rev 3 (Session 19b) — POINTER ENTRY
+Cosmetic backlog closed (bootstrap open item #3): dialog caption
+"Player Information" (players.dfm), name-input MaxLength 15
+(players.cpp/.dfm), Go! disabled at empty list via updateButs()
+(players.cpp UpdateButs), remove-guard dropped (orig BitBtn2Click
+removes unconditionally), and `DEVIATION:[prefill-single]` — one-row
+"Player 1" prefill (Lee-approved solo quick-start) replacing the
+undocumented rev-1 two-row prefill. Changes confined to
+newGameDialog. Verified live by Lee. **Full record:
+DIALOGS-NOTES.md rev 5 §10.**
+
+### (Session 19c — verification only; renderer.ts stays rev 13)
+Bootstrap open item #2 (`doConclude(true)` post-game re-entry,
+candidate defect) **CLOSED AS VERIFIED FAITHFUL — NO DEFECT**. The
+port's `mainUpdate()` reproduces orig `MenuUpdate()` with exact
+polarity on all five gated menu items (End Game enabled iff progress;
+New Game / Create New Grid / Grid Size / Preferences iff !progress;
+High Scores / About / Quit ungated in both); End Game self-disables
+synchronously on both conclusion paths, so the claimed re-entry chain
+is unreachable — exactly the original's own mechanism (the menu state
+IS the guard; orig has no concluded flag and no guard in Finish()).
+`force=true` mid-game matches orig EndGame1Click. Empirically confirmed
+by Lee. **Full evidence trail, polarity table, and residual
+unverified trivia (orig FormCreate calls MainUpdate but not
+MenuUpdate — initial menu states come from SMMain.dfm defaults,
+uninspected): DIALOGS-NOTES.md rev 5 §11.**
+
 ---
 
 ## 2. Renderer Assumptions (R1–R16, with current status)
@@ -555,20 +603,27 @@ ones are cosmetic/utility choices that are deliberately settled.
 
 **Phase 3 COMPLETE; R15 (rev 11) and R16 (rev 12) SHIPPED AND VERIFIED
 (primary checklists); renderer split (rev 13) SHIPPED AND VERIFIED
-(Session 17 smoke-pass).** Remaining work:
+(Session 17 smoke-pass); player reorder (dialogs rev 2) and Session-18
+regression RESOLVED (DIALOGS-NOTES §§1–6); build gate (Session 19a) and
+cosmetic backlog (dialogs rev 3, Session 19b) CLOSED; open item #2
+(doConclude re-entry) VERIFIED NO-DEFECT (DIALOGS-NOTES §11).**
+Remaining work:
 
-1. **Cosmetic backlog** (fidelity-first, per Lee's standing ruling):
-   - Move Up/Move Down player-reorder buttons in new-game setup (orig
-     Players.cpp BitBtn5/BitBtn6; do NOT reproduce their
-     strcpy-overflow pattern — swap by reference). **NEXT UP.** Lives in
-     dialogs.ts (newGameDialog).
+1. ~~Cosmetic backlog~~ **CLOSED** (Session 19b — dialogs.ts rev 3;
+   DIALOGS-NOTES §10). Includes the formerly-queued Move Up/Move Down
+   reorder (done Session 18, dialogs rev 2).
 2. **TOURNAMENT spot-check** (opportunistic, rev-11 R15 caveat + rev-12
    secondary): 2-player Tournament game — single-row split/merger
    tables, no-conversion hint, "(Tournament)" turn label, natural end
-   at maxturns+1. Low risk; run whenever convenient.
+   at maxturns+1. Low risk; run whenever convenient. NOTE: solo play
+   can no longer exercise Tournament (1-player TOURNAMENT auto-downgrades
+   to CLASSIC per orig quirk) — this spot-check now requires an actual
+   second player row ("+ Add player" in the Player Information dialog).
 3. **Unrun secondary checks** (low priority): fresh-storage David/1M
    defaults view, high-score persistence across page reload, menu
-   dialog no-tinting (newEntry transience).
+   dialog no-tinting (newEntry transience). Plus Session-19 leftovers:
+   >15-char name clamp check, Session-18 reorder/click-walking re-run,
+   solo-Tournament auto-downgrade confirmation (DIALOGS-NOTES §10.4).
 4. **New-game board mechanism (DOCUMENTARY ONLY, non-blocking)**: no
    examined original file explains why circles survive new game —
    Grid::clear() is uninitialized-loop UB (Grid.h), and Game.cpp (read
@@ -578,11 +633,19 @@ ones are cosmetic/utility choices that are deliberately settled.
    sources surface.
 5. **Verify-before-ship trivia** (carried from NOTES §10): currency
    symbol raw byte (assume £), prefs persistence option (b) decision,
-   SMMain.dfm captions (would also settle R1's timer interval).
+   SMMain.dfm captions (would also settle R1's timer interval) AND
+   initial menu-enablement defaults (orig FormCreate omits MenuUpdate;
+   see DIALOGS-NOTES §11.7 — port's assumed states are very likely
+   correct but uninspected at the .dfm).
 6. **Tile-art extraction seam**: drawCellEntity() is the single method
    to swap for bitmap tiles (SpacePoly2.res via Resource Hacker — look
    for BITMAP entries; Space.ico is the app icon only; SpacePoly2.mak
    is a build script, no runtime relevance).
+7. **Housekeeping (Session 19 close)**: DIALOGS-NOTES.md rev 5 is the
+   canonical record for Sessions 18–19; this file carries pointers
+   (rev-history entries above). Keep the pointer discipline going
+   forward: dialogs.ts-layer changes → full record in DIALOGS-NOTES,
+   pointer here; renderer.ts-layer changes → full record here.
 
 ---
 
@@ -596,7 +659,10 @@ ones are cosmetic/utility choices that are deliberately settled.
   given change reissues the notes plus ONE OR BOTH code files as
   needed — each code artifact call carries one complete file.
 - This file reissued alongside ("renderer-notes") when rationale grows.
-- FIX/DEVIATION/FIDELITY tags in code point here for detail.
+- FIX/DEVIATION/FIDELITY tags in code point here for detail. From
+  Session 19 onward, dialogs.ts-layer tags point to DIALOGS-NOTES.md
+  (rev 5); this archive holds the renderer.ts-layer rationale and the
+  revision spine for both files.
 - Logic layer amendments only via logged FIX:[phase3-verified] entries
   (Session 13 precedent: startGame board spec). The renderer split was
   explicitly required NOT to touch scaffold.ts (FRESH_BOOTSTRAP §3).
@@ -615,7 +681,13 @@ ones are cosmetic/utility choices that are deliberately settled.
 - Rev numbering: each reissued code file carries a distinct revision
   marker that uniquely identifies its contents (see rev 13 entry for
   the rationale); renderer.ts and dialogs.ts number independently
-  (renderer rev 13+, dialogs rev 1+).
+  (renderer rev 13+, dialogs rev 3+).
+- Build gate (Session 19a): `./build.sh` = `tsc && npx esbuild …` is the
+  canonical build; type errors block the bundle. Transcription drift
+  against the types is caught at build time, but on-disk verification
+  after reissues REMAINS REQUIRED (drift can still be
+  behavior-preserving and type-correct — e.g. a swapped string literal
+  sails through tsc).
 
 ---
 
@@ -629,7 +701,7 @@ reported to Lee in-session):
 |---|---|
 | HighScores.h | structural match; 3-tab layout confirmed (basis for rev 12's tabbed presentation) |
 | Preferences.h | checkbox names map 1:1; draft-commit flow confirmed |
-| Players.cpp | R2 evidence (see §1 revs 8–9); everything else faithful; Move Up/Down backlog noted |
+| Players.cpp | R2 evidence (see §1 revs 8–9); everything else faithful; Move Up/Down backlog noted — **DONE Session 18 (dialogs rev 2)**; cosmetic trio (caption/MaxLength/Go!-disable) DONE Session 19b (dialogs rev 3, DIALOGS-NOTES §10) |
 | ComEditForm.cpp | empty shell, dead in orig — correctly not ported |
 | ComForm.cpp | founding modal + Info(i) chain implemented (rev 8/9) |
 | GameGrid.h/.cpp | randomise faithful, no circle minimum (statistics); clear() NOT in this class |
@@ -637,16 +709,17 @@ reported to Lee in-session):
 | Game.h/.cpp | (Session 1-2) ported as boot defaults; contains NO board-clearing logic — not the circles-survive mechanism |
 | Merger.cpp | (Session 15) CLEAN — payout basis, payer range, CLASSIC-only conversion, tournament-empty-range all confirmed; surfaced R15 (per-player ListView, renderer presentation gap) — RESTORED rev 11 |
 | SplitForm.cpp | (Session 15) CLEAN — halve-then-double order, doubling range, caller-owned threshold confirmed; co-surfaced R15 — RESTORED rev 11 |
-| OverForm.cpp | (Session 15) CLEAN — biggest-company scan, winner selection, field order, compute-display-only scope confirmed; FIX:[cumulative-worth] confirmed AT SOURCE (orig bug real: worth declared outside loop) |
+| OverForm.cpp | (Session 15) CLEAN — biggest-company scan, winner selection, field order, compute-display-only scope confirmed; FIX:[cumulative-worth] confirmed AT SOURCE (orig bug real: worth declared outside loop); re-read Session 19c (DIALOGS-NOTES §11) |
 | HighScores.cpp | (Session 15) logic CLEAN — insertion, unconditional save, defaults, Total() confirmed; unreachable shift-guard confirmed; DEVIATION:[scores-format] fully corroborated (cipher key/trivia recorded); surfaced R16 (missing second end-of-game modal + tabbed presentation) — RESTORED rev 12 |
-| SMMain.cpp | (Session 15, final re-read) CLEAN — no new behavioral mismatches; FIX:[turn-eq], FIX:[rejection-loop], QUIRK [double-east] (incl. corrected-vs-buggy stepping split + commented-out switch fossils), QUIRK [prefs-half-wired], R13 basis, N/E/W/S order, turn-flow architecture, action/checkPlacementRules/setGridSize geometry/MenuUpdate/DrawSels/quit-texts/go-sequence/playerDetails all matched at source. New trivia: boot double-randomise (harmless, port equivalent); ListBox1 ItemIndex=−1 UB in orig (port immune). Received twice in one message — treated as one read. |
+| SMMain.cpp | (Session 15, final re-read) CLEAN — no new behavioral mismatches; FIX:[turn-eq], FIX:[rejection-loop], QUIRK [double-east] (incl. corrected-vs-buggy stepping split + commented-out switch fossils), QUIRK [prefs-half-wired], R13 basis, N/E/W/S order, turn-flow architecture, action/checkPlacementRules/setGridSize geometry/MenuUpdate/DrawSels/quit-texts/go-sequence/playerDetails all matched at source. New trivia: boot double-randomise (harmless, port equivalent); ListBox1 ItemIndex=−1 UB in orig (port immune). Received twice in one message — treated as one read. Re-read Session 19c: MenuUpdate polarity confirmed against renderer mainUpdate() — all gates exact (DIALOGS-NOTES §11.4) |
 
 Pending: **NONE.** Phase 3 closed. Outstanding information sources are
 optional ship trivia only (SMMain.dfm, SpacePoly2.res — see §3).
 
 ---
 
-*Last updated: Session 17 post-verification reissue — rev 13 smoke-pass
-verified by Lee ("Source split successful"); rev-13 entry stamped
-VERIFIED; §3 queue advanced to Move Up/Down reorder buttons as the
-next work item.*
+*Last updated: Session 19 close (cross-reference reissue) — Session-19c
+verification recorded as pointer (DIALOGS-NOTES rev 5 §11); §3 queue
+updated: cosmetic backlog closed, item-#2 verified no-defect; §3 items
+2/3/5 amended accordingly; §4 conventions gain the build-gate clause
+and the notes-pointer discipline.*
