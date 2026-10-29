@@ -1,18 +1,25 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 13
-// (rev 13 = Session-17 split, REORGANIZATION ONLY — no behavior change vs.
-// the Lee-verified rev 12 monolith; see RENDERER-NOTES.md rev 13 entry.)
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 17
+// (rev 17 = Session 21, BATCH 2 — side panel recomposition per
+// SESSION20-INVENTORY B6+B7+B8+B10 with Lee's design-time amendments:
+// B6 original order (current-player box → company list → names-only
+// Players box → teal turn box → Finish Turn); A5 FIDELITY names-only
+// list; DEVIATION:[singleclick-details] (single-click opens player
+// details, orig = double-click); B8b top-box "£0" pre-game → name+money;
+// B7 "Finish Turn"; B8 teal turn box (turn number only); B10 plain
+// company rows w/ thin separators, heading dropped pending Label5
+// evidence (QUESTION). Presentation only — scaffold/dialogs untouched.)
 //
 // Retained here: app init/chrome, canvas board rendering, selection timer,
 // mouse handling, turn flow (onContinue, beginTurnChoices, doConclude),
 // actionHooks (R15 eager capture), moneyShow/mainUpdate, mountApp.
-// ALL modal/dialog presentation now lives in dialogs.ts (rev 1) —
+// ALL modal/dialog presentation lives in dialogs.ts (rev 3) —
 // SpaceMonopolyApp methods delegate to functions imported from there;
 // dialogs receive state, formatMoney, and callbacks via parameters.
 //
 // Imports the logic layer (scaffold.ts, Session-13-amended, FROZEN — the
 // split did not touch it). Full rationale, revision history, R# assumptions,
-// open items: RENDERER-NOTES.md (archive — keep in sync, do not grow code).
+// open items: RENDERER-NOTES.md (spine — keep in sync, do not grow code).
 // Point-of-use tags: // FIX:[orig/renderer bug fixed]
 //                    // DEVIATION:[renderer choice, Lee-approved]
 //                    // FIDELITY:[matches orig source]
@@ -82,15 +89,34 @@ import type { SplitTableRow, MergerTableRow } from './dialogs';
 // high-scores modal (tabbed, current grid's tab activated, new entries
 // highlighted), per orig Finish() → HighScores(true); the standalone
 // High Scores menu dialog shares the tabbed presentation.
-// REV 13 SPLIT: dialog presentation moved to dialogs.ts (rev 1); this file
-// keeps chrome/board/timer/mouse/turn-flow/actionHooks. Zero behavior
-// change; rev-12 verification remains the accepted baseline.
+// R10 RETIRED (rev 17): players list is now NAMES-ONLY per A5 FIDELITY —
+// the name+money enhancement is dead; current-player balance lives in
+// the top box (B8b).
+// REV 13 SPLIT: dialog presentation moved to dialogs.ts; this file keeps
+// chrome/board/timer/mouse/turn-flow/actionHooks.
+// REV 14 (BATCH 1): responsive board (transform-based, DPR-aware,
+// ResizeObserver); DEVIATION:[dark-checker]; DEVIATION:[title-short];
+// column root layout; R12 hint strip below board.
+// REV 15 (FIX:[viewport-fit]): height model MIN → FIT — root occupies
+// exactly the viewport, min-height: 0 down the flex chain, host-page
+// normalization, side panel scrolls internally, ≤720px exempted.
+// REV 16 (FIX:[board-top-align]): board TOP-aligned in its region —
+// width-bound fits no longer float the board below the panel top.
+// REV 17 (BATCH 2): side panel recomposed to the ORIGINAL hierarchy per
+// B6 — see the side-panel construction in buildChrome and the REV 17
+// CSS block below. Turn-context ("Turn X of N", "(Tournament)") moved
+// from the panel to the R12 hint bar (Lee ruling).
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 
 // Palette (orig ImageList tiles approximated in primitives — NOTES §4.6)
-const CHECKER_A = '#3a3a52';
-const CHECKER_B = '#30304a';
+// REV 14 (B4): checker contrast strengthened + grid lines added —
+// dark-adapted restore of the orig bordered beige checker.
+// DEVIATION:[dark-checker]: dark palette per B1; if D1 light theme ever
+// lands, restoring the beige checker is a two-constant change.
+const CHECKER_A = '#43435e';
+const CHECKER_B = '#36364d';
+const GRID_LINE = '#12121c';
 const CIRCLE_FILL = '#f0ead6';
 const CIRCLE_STROKE = '#1c1c2a';
 const DIAMOND_FILL = '#7ee08a';
@@ -98,39 +124,82 @@ const DIAMOND_STROKE = '#1c1c2a';
 const SEL_FILL = 'rgba(0, 0, 204, 0.45)';  // clBlue translucent
 const SEL_STROKE = '#000';                 // clBlack
 const ACTIVE_STROKE = '#ffff00';           // clYellow
+// REV 17 (B8): faithful-bright teal turn box (VCL clTeal #008080 as the
+// faithful anchor — hex is an approximation pending closer evidence;
+// dark numerals per approved design). Theming revisit is Lee-flagged.
+const TURNBOX_BG = '#008080';
+const TURNBOX_FG = '#063030';
+const TURNBOX_SEP = '#2b2b45';
 
 // REV 13 SPLIT — chrome/board CSS only. The modal/toast/tab classes
 // (.sm-overlay/.sm-modal/.sm-toast/.sm-tabs/etc.) moved to dialogs.ts's
 // DIALOG_CSS, injected there via injectDialogStyles(). Order preserved:
 // chrome stylesheet first, dialog stylesheet second.
+// REV 14 (B3): column root (menubar full-width, then content row);
+// .sm-board chrome stripped; canvas paints edge-to-edge in its region,
+// aspect-preserved (4:3). R12 hint strip below the board.
+// First-cut small-screen accommodation (≤720px stacks board above the
+// panel) — dedicated mobile pass deferred.
+// REV 15 (FIX:[viewport-fit]): html/body normalization; root height 100vh
+// + box-sizing; min-height: 0 down the flex chain; side panel scrolls
+// internally; ≤720px stacked mode exempted from the fit model.
+// REV 16 (FIX:[board-top-align]): .sm-boardregion align-items FLEX-START
+// (width-bound fits no longer float the board; leftover collects between
+// board and hint bar).
+// REV 17 (BATCH 2): side-panel classes recomposed to the ORIGINAL
+// hierarchy — .sm-current (top box: clickable, name + money, "£0"
+// pre-game), company rows with THIN SEPARATORS and NO heading (QUESTION:
+// Label5 evidence pending), .sm-players names-only plain rows
+// (single-click details — DEVIATION:[singleclick-details]), .sm-turnbox
+// (large teal box, current turn number only), Finish Turn at bottom.
+// .sm-players li.current highlight and the .sm-turn "Turn X of Y" line
+// are DELETED (A5 FIDELITY: orig list is plain; turn context moved to
+// the hint bar).
 const CSS = `
-.sm-root { display: flex; flex-wrap: wrap; gap: 16px;
+html, body { margin: 0; height: 100%; }
+.sm-root { display: flex; flex-direction: column; gap: 10px;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  color: #e8e8f2; background: #14141f; min-height: 400px; padding: 12px; }
-.sm-left { display: flex; flex-direction: column; gap: 8px; }
-.sm-menubar { display: flex; gap: 6px; flex-wrap: wrap; }
+  color: #e8e8f2; background: #14141f; height: 100vh;
+  box-sizing: border-box; padding: 12px; }
+.sm-menubar { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
 .sm-menubar button, .sm-side button { background: #2a2a44; color: #e8e8f2;
   border: 1px solid #4a4a6a; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
 .sm-menubar button:disabled, .sm-side button:disabled { opacity: 0.4; cursor: default; }
 .sm-menubar select { background: #2a2a44; color: #e8e8f2; border: 1px solid #4a4a6a;
   border-radius: 4px; padding: 4px; }
-.sm-board { background: #0c0c16; border: 2px solid #4a4a6a; border-radius: 6px;
-  align-self: flex-start; cursor: default; }
-.sm-hintbar { font-size: 13px; color: #9a9ac0; min-height: 18px; }
-.sm-side { width: 260px; display: flex; flex-direction: column; gap: 8px; }
+.sm-content { display: flex; gap: 16px; flex: 1 1 auto; min-height: 0; }
+.sm-boardcol { display: flex; flex-direction: column; gap: 6px;
+  flex: 1 1 68%; min-width: 0; min-height: 0; }
+.sm-boardregion { flex: 1 1 auto; min-height: 320px;
+  display: flex; align-items: flex-start; justify-content: center; }
+.sm-board { display: block; }
+.sm-hintbar { font-size: 13px; color: #9a9ac0; min-height: 18px; flex: none; }
+.sm-side { width: 300px; flex: none; display: flex; flex-direction: column;
+  gap: 8px; min-height: 0; overflow-y: auto; }
 .sm-panel { background: #1d1d30; border: 1px solid #3a3a58; border-radius: 6px;
   padding: 10px; }
 .sm-panel h4 { margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase;
   letter-spacing: 0.08em; color: #9a9ac0; }
+.sm-current { cursor: pointer; }
+.sm-cpname { font-size: 15px; margin-bottom: 2px; min-height: 19px; }
+.sm-money { font-size: 20px; font-weight: 700; }
 .sm-players { list-style: none; margin: 0; padding: 0; }
-.sm-players li { padding: 3px 4px; border-radius: 4px; cursor: default; }
-.sm-players li.current { background: #2e2e52; font-weight: 600; }
-.sm-comrow { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sm-players li { padding: 3px 4px; cursor: pointer; }
+.sm-comrow { display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  border-bottom: 1px solid ${'#2b2b45'}; }
+.sm-comrow:last-child { border-bottom: none; }
 .sm-comrow button { flex: 1; text-align: left; }
 .sm-swatch { width: 14px; height: 14px; border-radius: 3px; flex: none;
   border: 1px solid #333; }
-.sm-money { font-size: 20px; font-weight: 700; }
-.sm-turn { font-size: 13px; color: #9a9ac0; }
+.sm-turnbox { background: #008080; color: #063030; font-size: 38px;
+  font-weight: 700; text-align: center; padding: 8px 0; border-radius: 4px;
+  flex: none; min-height: 24px; }
+@media (max-width: 720px) {
+  .sm-root { height: auto; min-height: 100vh; }
+  .sm-content { flex-direction: column; }
+  .sm-side { width: auto; overflow-y: visible; }
+  .sm-boardregion { min-height: 55vh; }
+}
 `;
 
 export class SpaceMonopolyApp {
@@ -140,10 +209,12 @@ export class SpaceMonopolyApp {
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
+  private boardRegion!: HTMLElement;
+  private resizeObs: ResizeObserver | null = null;
   private hintBar!: HTMLElement;
   private moneyLabel!: HTMLElement;
   private playerLabel!: HTMLElement;
-  private turnLabel!: HTMLElement;
+  private turnBox!: HTMLElement;
   private playerList!: HTMLUListElement;
   private companyRows: Array<{ btn: HTMLButtonElement; swatch: HTMLElement }> = [];
   private continueBtn!: HTMLButtonElement;
@@ -164,6 +235,13 @@ export class SpaceMonopolyApp {
     this.injectStyles();
     this.buildChrome();
     this.setGridSize(SMALL); // includes randomise — FIDELITY: orig FormCreate
+    // REV 14 (B3): responsive board — observe the board region and refit
+    // (also delivers the initial paint once layout lands; fitBoard
+    // early-returns on zero-size regions, e.g. the constructor-time call).
+    // REV 15: the region now reports the FITTED height (see CSS notes) —
+    // that is the fix; the observer/fit logic itself is unchanged.
+    this.resizeObs = new ResizeObserver(() => this.fitBoard());
+    this.resizeObs.observe(this.boardRegion);
     this.mainUpdate();
     this.moneyShow();
   }
@@ -179,8 +257,10 @@ export class SpaceMonopolyApp {
   }
 
   private buildChrome(): void {
-    const left = el('div', 'sm-left');
-
+    // REV 14 (B3): menubar now full-width at top level of the column root;
+    // board column (~68%) + side panel form the content row beneath it.
+    // (Menubar STRUCTURE is unchanged in rev 17 — dropdown recomposition
+    // is Batch 3.)
     const menubar = el('div', 'sm-menubar');
     const mkMenu = (label: string, onClick: () => void): HTMLButtonElement => {
       const b = el('button', undefined, label);
@@ -219,32 +299,53 @@ export class SpaceMonopolyApp {
     this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
     this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
 
+    // REV 14 (B3): board fills the board column edge-to-edge vertically
+    // under the menubar (region), top-aligned (rev 16), aspect-preserved.
+    // R12 hint bar (kept per inventory A6) = reserved slim strip below the
+    // region (no board occlusion).
+    this.boardRegion = el('div', 'sm-boardregion');
+    this.boardRegion.appendChild(this.canvas);
+    const boardCol = el('div', 'sm-boardcol');
+    boardCol.appendChild(this.boardRegion);
+
     this.hintBar = el('div', 'sm-hintbar', '');
+    boardCol.appendChild(this.hintBar);
 
-    left.appendChild(menubar);
-    left.appendChild(this.canvas);
-    left.appendChild(this.hintBar);
+    const content = el('div', 'sm-content');
+    content.appendChild(boardCol);
 
+    // ==========================================================================
+    // REV 17 (BATCH 2) — SIDE PANEL, ORIGINAL HIERARCHY (B6):
+    // (1) current-player box → (2) company list → (3) names-only Players
+    // box → (4) teal turn box → (5) Finish Turn. Replaces the rev-13
+    // order (Players → Current Player dup → Companies → button) and
+    // absorbs B11's wonkiness ledger.
+    // ==========================================================================
     const side = el('div', 'sm-side');
 
-    const pPanel = el('div', 'sm-panel');
-    pPanel.appendChild(el('h4', undefined, 'Players'));
-    this.playerList = el('ul', 'sm-players');
-    pPanel.appendChild(this.playerList);
-    side.appendChild(pPanel);
+    // (1) B6/B8b: current-player box. Pre-game = "£0" (moneyShow drives
+    // it); in play = current player's name over balance. Single-click
+    // opens the CURRENT player's details (Lee ruling — pairs with the
+    // single-click rows below; orig had no box equivalent).
+    const topPanel = el('div', 'sm-panel sm-current');
+    this.playerLabel = el('div', 'sm-cpname', '');
+    this.moneyLabel = el('div', 'sm-money', '');
+    topPanel.appendChild(this.playerLabel);
+    topPanel.appendChild(this.moneyLabel);
+    topPanel.addEventListener('click', () => {
+      if (this.state.player.length > 0) {
+        this.detailsDialog(this.state.curplay);
+      }
+    });
+    side.appendChild(topPanel);
 
-    const mPanel = el('div', 'sm-panel');
-    mPanel.appendChild(el('h4', undefined, 'Current Player'));
-    this.playerLabel = el('div', undefined, '\u2014');
-    this.moneyLabel = el('div', 'sm-money', '\u2014');
-    this.turnLabel = el('div', 'sm-turn', '');
-    mPanel.appendChild(this.playerLabel);
-    mPanel.appendChild(this.moneyLabel);
-    mPanel.appendChild(this.turnLabel);
-    side.appendChild(mPanel);
-
+    // (2) B10: company list — plain clickable rows, swatch + name, thin
+    // separators. NO heading (QUESTION: orig screenshot shows the list
+    // starting immediately with the first button; dfm Label5 exists but
+    // text/position unreadable — reinstate if wider evidence lands).
+    // Company ORDER verified this session (screenshot = port
+    // COMPANY_DEFS order exactly). Swatch shape held for D3.
     const cPanel = el('div', 'sm-panel');
-    cPanel.appendChild(el('h4', undefined, 'Companies'));
     for (let i = 0; i < NUM_COMPANIES; i++) {
       const row = el('div', 'sm-comrow');
       const swatch = el('span', 'sm-swatch');
@@ -260,22 +361,46 @@ export class SpaceMonopolyApp {
     }
     side.appendChild(cPanel);
 
-    this.continueBtn = el('button', undefined, 'Continue');
+    // (3) A5 FIDELITY: Players box — NAMES ONLY (orig layout; R10's
+    // name+money enhancement retired). Plain rows, no current-player
+    // highlight ("copy the original design"). DEVIATION:[singleclick-
+    // details]: details open on SINGLE-click (orig = ListBox dblclick)
+    // — restores per-player details access for everyone.
+    const pPanel = el('div', 'sm-panel');
+    pPanel.appendChild(el('h4', undefined, 'Players'));
+    this.playerList = el('ul', 'sm-players');
+    pPanel.appendChild(this.playerList);
+    side.appendChild(pPanel);
+
+    // (4) B8 FIDELITY: large teal box showing ONLY the current turn
+    // number. Max-turns context and the "(Tournament)" tag moved to the
+    // R12 hint bar (Lee ruling). Populated in mainUpdate; blank pre-game.
+    this.turnBox = el('div', 'sm-turnbox', '');
+    side.appendChild(this.turnBox);
+
+    // (5) B7: Finish Turn — in-game label per orig BitBtn1; gating and
+    // post-game "Game Over" disabled state are the rev-4/10 logic in
+    // mainUpdate, untouched. "Place a piece…" sels text kept (port
+    // addition — orig just disables the button while sels).
+    this.continueBtn = el('button', undefined, 'Finish Turn');
     this.continueBtn.addEventListener('click', () => this.onContinue());
     side.appendChild(this.continueBtn);
 
-    this.root.appendChild(left);
-    this.root.appendChild(side);
+    content.appendChild(side);
+    this.root.appendChild(menubar);
+    this.root.appendChild(content);
   }
 
-  // Rows rebuilt in mainUpdate(); per-row dblclick = orig ItemIndex.
+  // Rows rebuilt in mainUpdate(); single-click row = that player's
+  // details (DEVIATION:[singleclick-details]; supersedes rev-2's
+  // FIDELITY:[itemindex] dblclick, whose list is now names-only anyway).
   private rebuildPlayerList(): void {
     const s = this.state;
     this.playerList.textContent = '';
     for (let i = 0; i < s.player.length; i++) {
-      const li = el('li', i === s.curplay ? 'current' : undefined);
-      li.textContent = `${s.player[i].name} \u2014 ${this.formatMoney(s.player[i].money)}`;
-      li.addEventListener('dblclick', () => this.detailsDialog(i));
+      const li = el('li');
+      li.textContent = s.player[i].name; // A5: names only
+      li.addEventListener('click', () => this.detailsDialog(i));
       this.playerList.appendChild(li);
     }
   }
@@ -289,26 +414,85 @@ export class SpaceMonopolyApp {
     this.state.grid.resize(cfg.xsize, cfg.ysize, CELL_EMPTY);
     this.state.grid.randomise(); // FIDELITY: orig setGridSize randomises
     this.gridSizeSelect.value = String(type);
-    this.canvas.width = cfg.xsize * cfg.tileW;
-    this.canvas.height = cfg.ysize * cfg.tileH;
-    this.redrawGrid();
+    // REV 14 (B3): canvas no longer sized to natural tile units — fitBoard
+    // computes the responsive display size (DPR-aware) and repaints.
+    // cfg.tileW/tileH stay as the DRAWING units (scaffold is FROZEN —
+    // GRID_CONFIGS is not ours to change); see fitBoard/redrawGrid.
+    this.fitBoard();
     this.mainUpdate();
+  }
+
+  // REV 14 (B3): responsive fit. Computes the largest aspect-preserving
+  // board inside the board region, sets the canvas' CSS size to it and the
+  // backing store to display size × devicePixelRatio (crisp at any DPR —
+  // no upscale blur). Early-returns on zero-size regions (constructor /
+  // detached roots); the ResizeObserver delivers the first real fit once
+  // layout lands. FIXED SIDE BENEFIT: FIX:[click-mapping]'s
+  // rect-proportional mouse mapping is immune to display scaling, so
+  // clicks stay correct at every size with no mouse-side changes.
+  private fitBoard(): void {
+    const cfg = this.state.gridConfig();
+    const baseW = cfg.xsize * cfg.tileW;
+    const baseH = cfg.ysize * cfg.tileH;
+    const rw = this.boardRegion.clientWidth;
+    const rh = this.boardRegion.clientHeight;
+    if (rw <= 0 || rh <= 0) return;
+    const scale = Math.min(rw / baseW, rh / baseH);
+    const dispW = Math.max(1, Math.floor(baseW * scale));
+    const dispH = Math.max(1, Math.floor(baseH * scale));
+    this.canvas.style.width = `${dispW}px`;
+    this.canvas.style.height = `${dispH}px`;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = Math.round(dispW * dpr);
+    this.canvas.height = Math.round(dispH * dpr);
+    this.redrawGrid();
   }
 
   redrawGrid(): void {
     const s = this.state;
     const cfg = s.gridConfig();
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const baseW = cfg.xsize * cfg.tileW;
+    const baseH = cfg.ysize * cfg.tileH;
+
+    // REV 14 (B3): map base-tile drawing units onto the backing store.
+    // ALL existing draw sites (drawCellEntity, drawSels) remain in base
+    // units and scale for free. clearRect is in BASE units too — clearing
+    // canvas.width/height here would clear in transformed units and
+    // misbehave (backing-store pixels ≠ base units). Keep clear bounds
+    // in base units.
+    ctx.setTransform(
+      this.canvas.width / baseW, 0, 0, this.canvas.height / baseH, 0, 0,
+    );
+    ctx.clearRect(0, 0, baseW, baseH);
 
     for (let y = 0; y < cfg.ysize; y++) {
       for (let x = 0; x < cfg.xsize; x++) {
         // Checkerboard — ImageList iStart + (x+y)%2 equivalent.
+        // REV 14 (B4): DEVIATION:[dark-checker] — contrast strengthened
+        // (palette above); the borders below complete the structure.
         ctx.fillStyle = (x + y) % 2 === 0 ? CHECKER_A : CHECKER_B;
         ctx.fillRect(x * cfg.tileW, y * cfg.tileH, cfg.tileW, cfg.tileH);
         this.drawCellEntity(x, y);
       }
     }
+
+    // REV 14 (B4): thin cell borders — single grid-line pass AFTER the
+    // fills/entities so lines read over both checker phases (orig
+    // structure: bordered checker; dark-adapted per B1).
+    ctx.strokeStyle = GRID_LINE;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= cfg.xsize; x++) {
+      ctx.moveTo(x * cfg.tileW, 0);
+      ctx.lineTo(x * cfg.tileW, baseH);
+    }
+    for (let y = 0; y <= cfg.ysize; y++) {
+      ctx.moveTo(0, y * cfg.tileH);
+      ctx.lineTo(baseW, y * cfg.tileH);
+    }
+    ctx.stroke();
+
     this.drawSels();
   }
 
@@ -402,7 +586,8 @@ export class SpaceMonopolyApp {
 
   // --- Mouse (NOTES §6.6) ----------------------------------------------------
   // FIX:[click-mapping] rect-proportional mapping — correct even if the
-  // canvas is CSS-scaled (flex squeeze, host page, DPR oddities).
+  // canvas is CSS-scaled (flex squeeze, host page, DPR oddities). REV 14:
+  // this is what lets the board go responsive with zero mouse changes.
 
   private cellFromEvent(e: MouseEvent): [number, number] | null {
     const cfg = this.state.gridConfig();
@@ -468,14 +653,23 @@ export class SpaceMonopolyApp {
     }, 1500);
   }
 
+  // REV 17 (B8 displacement): turn context ("Turn X of N" + Tournament
+  // tag) lives HERE now, prefixing the R12 guidance — the teal turn box
+  // shows only the bare number per B8 FIDELITY.
   private updateHint(): void {
     const s = this.state;
     if (!s.progress) {
       this.setHint('');
-    } else if (s.sels) {
-      this.setHint('Click one of the five flashing squares to place your piece.');
     } else {
-      this.setHint('Click Continue to pass to the next turn.');
+      const ctx =
+        `Turn ${s.turn} of ${s.maxTurns}` +
+        (s.gameType === TOURNAMENT ? ' (Tournament)' : '') +
+        ' \u2014 ';
+      if (s.sels) {
+        this.setHint(ctx + 'Click one of the five flashing squares to place your piece.');
+      } else {
+        this.setHint(ctx + 'Click Finish Turn to pass to the next turn.');
+      }
     }
   }
 
@@ -668,8 +862,13 @@ export class SpaceMonopolyApp {
 
   moneyShow(): void {
     const s = this.state;
-    if (s.player.length === 0) return;
-    this.moneyLabel.textContent = this.formatMoney(s.player[s.curplay].money);
+    // REV 17 (B8b): pre-game the top box shows "£0" (orig initial
+    // screenshot state); in play it is the CURRENT player's balance.
+    // Name updates live in mainUpdate (playerLabel).
+    this.moneyLabel.textContent =
+      s.player.length === 0
+        ? this.formatMoney(0n)
+        : this.formatMoney(s.player[s.curplay].money);
 
     // DEVIATION:[swatch-color] (R13): orig fills the shape white when
     // affordable; port keeps the company color, white border = affordable.
@@ -689,9 +888,12 @@ export class SpaceMonopolyApp {
     // FIX:[seeresults-disabled]: in-game disabled = sels (orig BitBtn1);
     // post-game disabled = concluded. With R14 retired the button is
     // now a post-hoc viewer (standings already auto-showed at game end).
+    // REV 17 (B7): in-game label is "Finish Turn" (was Continue); the
+    // "Place a piece…" sels text is kept (port addition). Post-game
+    // labels/gating are the rev-4/10 behavior, untouched.
     this.continueBtn.disabled = s.progress ? !!s.sels : this.concluded;
     this.continueBtn.textContent = s.progress
-      ? (s.sels ? 'Place a piece\u2026' : 'Continue')
+      ? (s.sels ? 'Place a piece\u2026' : 'Finish Turn')
       : (playing && !this.concluded ? 'See Results' : 'Game Over');
 
     // Company buttons: Enabled = Exist (trade BUTTONS gated on !sels
@@ -701,11 +903,12 @@ export class SpaceMonopolyApp {
     }
 
     this.rebuildPlayerList();
-    this.playerLabel.textContent = playing ? s.player[s.curplay].name : '\u2014';
-    this.turnLabel.textContent = playing
-      ? `Turn ${s.turn} of ${s.maxTurns}` +
-          (s.gameType === TOURNAMENT ? ' (Tournament)' : '')
-      : '';
+    this.playerLabel.textContent = playing ? s.player[s.curplay].name : '';
+
+    // REV 17 (B8): teal box = CURRENT TURN NUMBER ONLY. Blank pre-game
+    // (playing false). Turn/max/(Tournament) context lives in the hint
+    // bar (updateHint).
+    this.turnBox.textContent = playing ? String(s.turn) : '';
 
     // MenuUpdate: setup menus when !progress; End Game when progress.
     this.menuButtons['newGame'].disabled = s.progress;
@@ -776,5 +979,9 @@ export class SpaceMonopolyApp {
 //   </script>
 
 export function mountApp(root: HTMLElement, storage: Storage = localStorage): SpaceMonopolyApp {
+  // REV 14 (B9): DEVIATION:[title-short] — orig form caption was
+  // 'Space Monopoly v1.2 - 2001 David Vivash' (dfm evidence); Lee chose
+  // the short form for the port's document title.
+  document.title = 'Space Monopoly';
   return new SpaceMonopolyApp(root, storage);
 }
