@@ -1,6 +1,6 @@
 # RENDERER-NOTES.md — Annotation Archive for renderer.ts + dialogs.ts
 
-Companion to `renderer.ts` (UI layer, rev 13 — chrome/board/turn-flow) and
+Companion to `renderer.ts` (UI layer, rev 14 — chrome/board/turn-flow) and
 `dialogs.ts` (dialog layer, rev 3 — all modal/dialog presentation; split
 out of renderer.ts rev 12 in Session 17). Mirrors the scaffold
 convention: the code carries only terse one-line tags; this document
@@ -296,13 +296,12 @@ implications.
   over. The rev-5 "Your holding" bullet is replaced by the table (it
   WAS the R15 deviation).
 - **FIDELITY:[mergerform-players]**: mergerDialog gains a per-player
-  table (columns: Player / Shares in [absorbed] / Shares in
-  [survivor] / Money earned — company names in the headers), same
-  CLASSIC-all / TOURNAMENT-current row range as `mergerHook`'s payout
-  loop. The rev-7 current-player payout/conversion rows are replaced
-  by the table (they WERE the R15 deviation); the combined-value row
-  and banners remain. TOURNAMENT keeps a no-conversion hint (quirk
-  surfacing preserved).
+  table (columns: Player / Shares in [absorbed] / Shares in [survivor] /
+  Money earned — company names in the headers), same CLASSIC-all /
+  TOURNAMENT-current row range as `mergerHook`'s payout loop. The rev-7
+  current-player payout/conversion rows are replaced by the table (they
+  WERE the R15 deviation); the combined-value row and banners remain.
+  TOURNAMENT keeps a no-conversion hint (quirk surfacing preserved).
 - **EAGER CAPTURE (correctness detail)**: table rows are assembled in
   the action hooks, NOT lazily at modal-open time. The DOM modals are
   QUEUED, and a later chained event inside action() (merger → split)
@@ -332,8 +331,8 @@ implications.
   with 0 earned and shareholders' shares/payouts ✔; chained
   triple-merge → split sequence presents correct numbers ✔.
   TOURNAMENT rows not exercised (Lee unfamiliar with orig tournament
-  mode) — risk assessed LOW: the row-range ternary is identical to the
-  hook mutation ranges source-verified in Session 15, so the tables
+  mode) — risk assessed LOW: the row-range ternary is identical to
+  the hook mutation ranges source-verified in Session 15, so the tables
   are correct by construction whenever the underlying economies fire;
   untested surface is single-row rendering and the mode hints only.
   Spot-check opportunistically (e.g. during the rev-12 playtest).
@@ -539,6 +538,82 @@ unverified trivia (orig FormCreate calls MainUpdate but not
 MenuUpdate — initial menu states come from SMMain.dfm defaults,
 uninspected): DIALOGS-NOTES.md rev 5 §11.**
 
+### rev 14 (Session 21, Batch 1 — board-area layout: B3 + B4 + B9; PENDING LEE VERIFICATION)
+First code of the Session-20 interface-alignment plan (canonical:
+SESSION20-INVENTORY.md / "Session 20 Interface Todo.md"), locked Batch 1
+of three. Renderer-only PRESENTATION change: no game logic touched, no
+behavioral change, dialogs.ts untouched (rev 3 continues), scaffold
+untouched. Scope: inventory B3 (board proportion) + B4 (cell
+appearance) + B9 (window title). Rev spine: revised from the pasted
+Lee-confirmed rev-13 copy, never regenerated from memory.
+
+- **B3 — responsive board (structural)**: root layout restructured from
+  the rev-2-era two-column arrangement (`.sm-left`
+  menubar+canvas+hint / `.sm-side`) to a COLUMN root: full-width
+  menubar on top, then a content row — board column (flex-basis ~68%,
+  the B3 65–70%-of-window target) + side panel. Batch 2 will
+  recompose the side panel's internals; its position in the content
+  row is now final. Board container ornamentation REMOVED (old
+  `.sm-board` border/radius/background CSS gone — inventory B3); the
+  canvas paints edge-to-edge vertically under the menubar, preserving
+  the grid's 4:3 aspect (all three grid geometries are 4:3) by
+  centering within the region.
+- **B3 — implementation (transform, scaffold-frozen constraint)**:
+  `cfg.tileW/tileH` live in the FROZEN scaffold and cannot change, so
+  ALL canvas drawing stays in base-tile units; the renderer computes a
+  display scale from the live board region, sets the canvas backing
+  store to display-size × devicePixelRatio, and applies
+  `ctx.setTransform` per redraw. Every existing draw site
+  (`redrawGrid`, `drawCellEntity`, `drawSels`) is untouched and simply
+  scales. `fitBoard()` runs on grid-size change and via a
+  `ResizeObserver` on the board region (refits on window resize /
+  panel growth; RO also delivers the initial fit when layout first
+  lands — `fitBoard` early-returns on zero-size regions, covering the
+  pre-layout constructor call). DPR-aware backing store means no
+  upscale blur. **FIX:[click-mapping] pays off here**: the rev-2
+  rect-proportional mouse mapping is immune to the display scaling by
+  construction — no mouse-side changes were needed or made.
+- **B3 — redrawing detail (audit note)**: `redrawGrid()` previously
+  cleared `clearRect(0, 0, canvas.width, canvas.height)` — under the
+  rev-14 transform that would clear in TRANSFORMED units and misbehave
+  (backing-store pixels ≠ base units). Now clears in base units
+  (`clearRect(0, 0, baseW, baseH)` after `setTransform`). Anyone
+  touching this file must keep clear bounds in base units.
+- **B3 — Lee decision (responsive)**: responsive design confirmed over
+  a fixed-pixel layout, with an explicit eye on FUTURE mobile
+  accommodation. First-cut media query included (≤ 720px: content
+  column stacks, board above the side panel, region keeps a 55vh floor
+  so the board stays visible); refinement deliberately deferred to a
+  dedicated small-screen pass later.
+- **B4 — DEVIATION:[dark-checker]**: the port ALREADY drew a parity
+  checker (`(x+y)%2`, two near-identical dark purples) — invisible in
+  practice, and cells had no borders. Restored structure: checker
+  contrast strengthened (CHECKER_A `#43435e` / CHECKER_B `#36364d` —
+  Lee-approved first-cut values, tunable) + a thin 1-base-unit
+  grid-line pass (`#12121c`) drawn AFTER fills/entities so it reads as
+  the original's bordered checker in the dark palette (B1 keeps dark
+  theme; if D1 light theme ever lands, the beige checker restore is a
+  two-constant change).
+- **B9 — DEVIATION:[title-short]**: `document.title = 'Space
+  Monopoly'` set at mount. Original caption was the full
+  `'Space Monopoly v1.2 - 2001 David Vivash'` (dfm evidence); Lee
+  chose the short form.
+- **R12 hint bar (kept per inventory A6)**: relocated into a reserved
+  slim strip BELOW the board region (Lee decision: reserved strip over
+  overlay — no art occlusion). Behavior (flash hints, color cycling)
+  unchanged.
+- **Untouched by design**: menubar contents/structure (Batch 3 will
+  rebuild it as three dropdown menus — the flat button row persists
+  until then), side-panel internals (Batch 2), all dialog code, all
+  game logic, all mouse/turn-flow/actionHooks mechanics.
+- **Acceptance**: Lee transcribes to disk, `./build.sh` green, §6
+  baseline re-run PLUS batch-specific checks: board ≈ 65–70% width,
+  edge-to-edge under menubar, aspect true; checker visible with thin
+  borders; browser title reads "Space Monopoly"; window resizing
+  refits crisply (no blur at any DPR); clicks still land on the right
+  cells at odd window sizes; hint strip renders below board; narrow
+  window stacks board above panel.
+
 ---
 
 ## 2. Renderer Assumptions (R1–R16, with current status)
@@ -571,11 +646,14 @@ ones are cosmetic/utility choices that are deliberately settled.
   22×18 / 28×24), not the orig overstated menu captions (QUIRK
   menu-labels).
 - **R10 (SETTLED, enhancement)** Player list shows name + money
-  (orig: names only).
+  (orig: names only). **NOTE (Session-20 inventory A5): superseded —
+  Batch 2 will restore names-only per the approved FIDELITY
+  disposition; current state until then.**
 - **R11 (SETTLED)** Currency-unit input validated to 1–3 chars
   (RENDERER SPEC; orig bypasses setUnit — port MAY validate at input).
 - **R12 (SETTLED, diagnostic)** Hint bar + missed-click feedback.
-  Candidate for removal once stable.
+  Candidate for removal once stable. **NOTE (Session-20 inventory A6):
+  Lee ruled KEEP** — retained, relocated below board in rev 14.
 - **R13 (Lee-approved deviation; basis source-confirmed)** Swatches keep
   company color; affordability = white border. Orig fills the entire
   swatch white with black pen.
@@ -607,45 +685,62 @@ ones are cosmetic/utility choices that are deliberately settled.
 regression RESOLVED (DIALOGS-NOTES §§1–6); build gate (Session 19a) and
 cosmetic backlog (dialogs rev 3, Session 19b) CLOSED; open item #2
 (doConclude re-entry) VERIFIED NO-DEFECT (DIALOGS-NOTES §11).**
+**Session-20 interface inventory (game-window scope) APPROVED and
+batch-locked; Batch 1 (B3+B4+B9) issued as rev 14 this session —
+pending Lee on-disk transcription + build + baseline re-run. Batches
+2 (side panel) and 3 (menubar) queued behind Batch 1 acceptance.**
 Remaining work:
 
 1. ~~Cosmetic backlog~~ **CLOSED** (Session 19b — dialogs.ts rev 3;
    DIALOGS-NOTES §10). Includes the formerly-queued Move Up/Move Down
    reorder (done Session 18, dialogs rev 2).
-2. **TOURNAMENT spot-check** (opportunistic, rev-11 R15 caveat + rev-12
+2. **SESSION 21 LAYOUT BATCHES** (canonical plan: SESSION20-INVENTORY.md
+   "Approved implementation plan"):
+   - **Batch 1 — board area (B3+B4+B9): ISSUED as renderer.ts rev 14,
+     pending Lee verification.**
+   - Batch 2 — side panel: B6 (recomposition incl. B8b top-box
+     semantics) + B7 (Finish Turn) + B8 (teal turn box) + B10 (company
+     row structure; swatch shape held for D3; Betelguese spelling
+     check during B10).
+   - Batch 3 — menubar: B2 (three dropdown menus, "View High Scores" /
+     "About Space Monopoly" captions) + A4 (Grid Size flyout, literal
+     asterisk separator, turn-count captions).
+   - Follow-on candidate: board-entity art at drawCellEntity()
+     (P1 cross token, P2 diamond; buildings TBD evidence).
+3. **TOURNAMENT spot-check** (opportunistic, rev-11 R15 caveat + rev-12
    secondary): 2-player Tournament game — single-row split/merger
    tables, no-conversion hint, "(Tournament)" turn label, natural end
    at maxturns+1. Low risk; run whenever convenient. NOTE: solo play
    can no longer exercise Tournament (1-player TOURNAMENT auto-downgrades
    to CLASSIC per orig quirk) — this spot-check now requires an actual
    second player row ("+ Add player" in the Player Information dialog).
-3. **Unrun secondary checks** (low priority): fresh-storage David/1M
+4. **Unrun secondary checks** (low priority): fresh-storage David/1M
    defaults view, high-score persistence across page reload, menu
    dialog no-tinting (newEntry transience). Plus Session-19 leftovers:
    >15-char name clamp check, Session-18 reorder/click-walking re-run,
    solo-Tournament auto-downgrade confirmation (DIALOGS-NOTES §10.4).
-4. **New-game board mechanism (DOCUMENTARY ONLY, non-blocking)**: no
+5. **New-game board mechanism (DOCUMENTARY ONLY, non-blocking)**: no
    examined original file explains why circles survive new game —
    Grid::clear() is uninitialized-loop UB (Grid.h), and Game.cpp (read
    Sessions 1–2, ported as boot defaults) contains no clearing logic.
    Port implements Lee's observed spec (scaffold
    FIX:[phase3-verified]); nothing further to do unless new original
    sources surface.
-5. **Verify-before-ship trivia** (carried from NOTES §10): currency
+6. **Verify-before-ship trivia** (carried from NOTES §10): currency
    symbol raw byte (assume £), prefs persistence option (b) decision,
    SMMain.dfm captions (would also settle R1's timer interval) AND
    initial menu-enablement defaults (orig FormCreate omits MenuUpdate;
    see DIALOGS-NOTES §11.7 — port's assumed states are very likely
    correct but uninspected at the .dfm).
-6. **Tile-art extraction seam**: drawCellEntity() is the single method
+7. **Tile-art extraction seam**: drawCellEntity() is the single method
    to swap for bitmap tiles (SpacePoly2.res via Resource Hacker — look
    for BITMAP entries; Space.ico is the app icon only; SpacePoly2.mak
    is a build script, no runtime relevance).
-7. **Housekeeping (Session 19 close)**: DIALOGS-NOTES.md rev 5 is the
-   canonical record for Sessions 18–19; this file carries pointers
-   (rev-history entries above). Keep the pointer discipline going
-   forward: dialogs.ts-layer changes → full record in DIALOGS-NOTES,
-   pointer here; renderer.ts-layer changes → full record here.
+8. **Housekeeping**: DIALOGS-NOTES.md rev 5 is the canonical record for
+   Sessions 18–19; this file carries pointers (rev-history entries
+   above). Keep the pointer discipline going forward: dialogs.ts-layer
+   changes → full record in DIALOGS-NOTES, pointer here; renderer.ts
+   layer changes → full record here.
 
 ---
 
@@ -681,7 +776,7 @@ Remaining work:
 - Rev numbering: each reissued code file carries a distinct revision
   marker that uniquely identifies its contents (see rev 13 entry for
   the rationale); renderer.ts and dialogs.ts number independently
-  (renderer rev 13+, dialogs rev 3+).
+  (renderer rev 14+, dialogs rev 3+).
 - Build gate (Session 19a): `./build.sh` = `tsc && npx esbuild …` is the
   canonical build; type errors block the bundle. Transcription drift
   against the types is caught at build time, but on-disk verification
@@ -718,8 +813,8 @@ optional ship trivia only (SMMain.dfm, SpacePoly2.res — see §3).
 
 ---
 
-*Last updated: Session 19 close (cross-reference reissue) — Session-19c
-verification recorded as pointer (DIALOGS-NOTES rev 5 §11); §3 queue
-updated: cosmetic backlog closed, item-#2 verified no-defect; §3 items
-2/3/5 amended accordingly; §4 conventions gain the build-gate clause
-and the notes-pointer discipline.*
+*Last updated: Session 21 open — Batch 1 (B3+B4+B9) issued as
+renderer.ts rev 14; rev-14 entry added to §1; §2 R10/R12 annotated with
+Session-20 dispositions; §3 gains the Session-21 batch queue (item 2);
+§4 rev-spine ranges updated (renderer 14+); header companion line
+updated to rev 14.*
