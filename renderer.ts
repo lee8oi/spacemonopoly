@@ -1,28 +1,31 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 17
-// (rev 17 = Session 21, BATCH 2 — side panel recomposition per
-// SESSION20-INVENTORY B6+B7+B8+B10 with Lee's design-time amendments:
-// B6 original order (current-player box → company list → names-only
-// Players box → teal turn box → Finish Turn); A5 FIDELITY names-only
-// list; DEVIATION:[singleclick-details] (single-click opens player
-// details, orig = double-click); B8b top-box "£0" pre-game → name+money;
-// B7 "Finish Turn"; B8 teal turn box (turn number only); B10 plain
-// company rows w/ thin separators, heading dropped pending Label5
-// evidence (QUESTION). Presentation only — scaffold/dialogs untouched.)
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 19
+// (rev 19 = Session 22, Batch 3 CORRECTION REISSUE over defective rev 18.
+// Rev 18 shipped three defects: the rev-14/15/16 responsive chrome
+// stylesheet was lost (ResizeObserver/canvas feedback loop — runaway
+// board expansion; side panel pushed out of the viewport), a permanent
+// full-viewport transparent overlay intercepted ALL clicks (menus
+// inert), and menu gating scraped the DOM with querySelectorAll.
+// Rev 19 restores the rev-17 stylesheet VERBATIM and rebuilds the
+// Batch-3 menu system cleanly: B2 three dropdown menus (Project/
+// Options/Help), A4 Grid Size flyout with literal asterisk captions,
+// fixed-position panels, open-while-used underlay, reference-held
+// menu items, MenuUpdate polarity unchanged. See RENDERER-NOTES §1a.
 //
-// Retained here: app init/chrome, canvas board rendering, selection timer,
-// mouse handling, turn flow (onContinue, beginTurnChoices, doConclude),
-// actionHooks (R15 eager capture), moneyShow/mainUpdate, mountApp.
-// ALL modal/dialog presentation lives in dialogs.ts (rev 3) —
-// SpaceMonopolyApp methods delegate to functions imported from there;
-// dialogs receive state, formatMoney, and callbacks via parameters.
+// PRE-TRANSMISSION FIX (same rev, before any disk write): the first
+// draft of this rev 19 carried three unreleased defects, caught on
+// self-review — (1) .sm-menupanel lacked display:none so ALL panels
+// rendered at boot and closeMenus never hid the open panel; (2) the
+// gridFlyoutPanel field was undeclared/unassigned (flyout would throw
+// on first hover); (3) the promised Esc handler was never wired. This
+// version corrects all three. Design record (NOTES §1a) unchanged —
+// it described the corrected behavior.
 //
-// Imports the logic layer (scaffold.ts, Session-13-amended, FROZEN — the
-// split did not touch it). Full rationale, revision history, R# assumptions,
-// open items: RENDERER-NOTES.md (spine — keep in sync, do not grow code).
-// Point-of-use tags: // FIX:[orig/renderer bug fixed]
-//                    // DEVIATION:[renderer choice, Lee-approved]
-//                    // FIDELITY:[matches orig source]
+// Rev 17 carried: chrome/board/timer/mouse/turn-flow/actionHooks
+// (STYLESHEET AND ALL BELOW RESTORED INTACT FROM REV 17).
+// Rev 18's only surviving contribution: the menu DESIGN (B2 mapping,
+// A4 captions, interaction model) — its implementation is replaced.
+// dialogs.ts (rev 3) and scaffold UNTOUCHED.
 // ============================================================================
 
 import {
@@ -87,8 +90,11 @@ import type { SplitTableRow, MergerTableRow } from './dialogs';
 // ranges (CLASSIC all players; TOURNAMENT current player only).
 // R16 RETIRED (rev 12): end-of-game sequence is standings modal →
 // high-scores modal (tabbed, current grid's tab activated, new entries
-// highlighted), per orig Finish() → HighScores(true); the standalone
+// highlighted), per orig Finish(); HighScores(true);. The standalone
 // High Scores menu dialog shares the tabbed presentation.
+// R9 SUPERSEDED-BY-REVISION (rev 19): the sm-menubar <select> is
+// DELETED; grid-size control is Options → Grid Size flyout with literal
+// asterisk captions (A4). Actual-geometry knowledge is trivia only.
 // R10 RETIRED (rev 17): players list is now NAMES-ONLY per A5 FIDELITY —
 // the name+money enhancement is dead; current-player balance lives in
 // the top box (B8b).
@@ -101,11 +107,16 @@ import type { SplitTableRow, MergerTableRow } from './dialogs';
 // exactly the viewport, min-height: 0 down the flex chain, host-page
 // normalization, side panel scrolls internally, ≤720px exempted.
 // REV 16 (FIX:[board-top-align]): board TOP-aligned in its region —
-// width-bound fits no longer float the board below the panel top.
+// width-bound fits no longer float the board; top flush with panel top
+// at every size; leftover collects between board and hint bar.
 // REV 17 (BATCH 2): side panel recomposed to the ORIGINAL hierarchy per
 // B6 — see the side-panel construction in buildChrome and the REV 17
 // CSS block below. Turn-context ("Turn X of N", "(Tournament)") moved
 // from the panel to the R12 hint bar (Lee ruling).
+// REV 18 (DEFECTIVE, superseded): menu design correct, implementation
+// broken (stylesheet lost / permanent overlay / DOM-scrape gating).
+// REV 19 (BATCH 3 CORRECTION): rev-17 stylesheet restored VERBATIM;
+// menu system rebuilt — see the REV 19 MENU block in buildChrome.
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 
@@ -130,6 +141,16 @@ const ACTIVE_STROKE = '#ffff00';           // clYellow
 const TURNBOX_BG = '#008080';
 const TURNBOX_FG = '#063030';
 const TURNBOX_SEP = '#2b2b45';
+// REV 19: menu chrome constants (DEVIATION:[menu-styling] — dark-app
+// adaptation of Win2k native menu colors; see NOTES §1a).
+const MENU_BG = '#f4f4f0';
+const MENU_FG = '#1a1a24';
+const MENU_HOVER_BG = '#316ac5';   // clHighlight
+const MENU_HOVER_FG = '#ffffff';
+const MENU_DISABLED_FG = '#8a8a90';
+const MENU_BORDER = '#8a8a96';
+const MENU_UNDERLAY_Z = '900';    // below dialog overlays (dialogs.ts)
+const MENU_PANEL_Z = '905';
 
 // REV 13 SPLIT — chrome/board CSS only. The modal/toast/tab classes
 // (.sm-overlay/.sm-modal/.sm-toast/.sm-tabs/etc.) moved to dialogs.ts's
@@ -155,6 +176,9 @@ const TURNBOX_SEP = '#2b2b45';
 // .sm-players li.current highlight and the .sm-turn "Turn X of Y" line
 // are DELETED (A5 FIDELITY: orig list is plain; turn context moved to
 // the hint bar).
+// *** REV 19: THE FOLLOWING STYLESHEET IS THE REV-17 STYLESHEET VERBATIM
+// (preservation-verification rule, Session-22) with the REV-19 MENU RULES
+// APPENDED at the end — nothing above the append marker is modified. ***
 const CSS = `
 html, body { margin: 0; height: 100%; }
 .sm-root { display: flex; flex-direction: column; gap: 10px;
@@ -200,6 +224,23 @@ html, body { margin: 0; height: 100%; }
   .sm-side { width: auto; overflow-y: visible; }
   .sm-boardregion { min-height: 55vh; }
 }
+/* ==== REV 19 MENU RULES (appended; chrome rules above untouched) ==== */
+.sm-menubar .sm-menubtn { background: #2a2a44; color: #e8e8f2;
+  border: 1px solid #4a4a6a; border-radius: 4px; padding: 4px 10px;
+  cursor: pointer; font-size: 14px; }
+.sm-menubar .sm-menubtn.sm-open { background: #4a4a6a; }
+.sm-menupanel { display: none; position: fixed; background: ${MENU_BG};
+  border: 1px solid ${MENU_BORDER}; border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  padding: 4px 0; min-width: 190px; z-index: ${MENU_PANEL_Z}; }
+.sm-menuitem { display: flex; align-items: center; padding: 5px 12px 5px 6px;
+  color: ${MENU_FG}; font-size: 14px; cursor: default; white-space: nowrap; }
+.sm-menuitem:hover { background: ${MENU_HOVER_BG}; color: ${MENU_HOVER_FG}; }
+.sm-menuitem.sm-disabled { color: ${MENU_DISABLED_FG}; }
+.sm-menuitem.sm-disabled:hover { background: transparent; }
+.sm-menuitem .sm-mitem-gutter { width: 18px; flex: none; text-align: center; }
+.sm-menuitem .sm-mitem-arrow { margin-left: auto; padding-left: 18px; }
+.sm-menuunderlay { position: fixed; inset: 0; z-index: ${MENU_UNDERLAY_Z}; }
 `;
 
 export class SpaceMonopolyApp {
@@ -218,8 +259,23 @@ export class SpaceMonopolyApp {
   private playerList!: HTMLUListElement;
   private companyRows: Array<{ btn: HTMLButtonElement; swatch: HTMLElement }> = [];
   private continueBtn!: HTMLButtonElement;
-  private menuButtons: Record<string, HTMLButtonElement> = {};
-  private gridSizeSelect!: HTMLSelectElement;
+
+  // REV 19: menu system state. menuItems = every menu row, held BY
+  // REFERENCE (rev-18 lesson: no querySelector scraping in mainUpdate).
+  // menuPanels = all four dropdown/flyout panels (bulk hide on close —
+  // the .sm-menupanel display:none default keeps them invisible at
+  // construction). gridFlyoutPanel = the Grid Size flyout. topMenus =
+  // the three top-level buttons. Panels are positioned via
+  // getBoundingClientRect (position:fixed, viewport coords) at OPEN
+  // time — never at construction.
+  private menuItems: Record<string, HTMLDivElement> = {};
+  private menuPanels: HTMLDivElement[] = [];
+  private gridFlyoutPanel!: HTMLDivElement;
+  private gridBullets: Record<string, HTMLElement> = {};
+  private topMenus: Array<HTMLButtonElement> = [];
+  private openTopIdx = -1;
+  private underlay: HTMLDivElement | null = null;
+  private flyoutOpen = false;
 
   private timerHandle: number | null = null;
   private timerTag = 0; // Timer1 Tag, cycles 0..4
@@ -242,6 +298,10 @@ export class SpaceMonopolyApp {
     // that is the fix; the observer/fit logic itself is unchanged.
     this.resizeObs = new ResizeObserver(() => this.fitBoard());
     this.resizeObs.observe(this.boardRegion);
+    // REV 19: Esc dismisses any open menu (DEVIATION:[menu-interaction]).
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.closeMenus();
+    });
     this.mainUpdate();
     this.moneyShow();
   }
@@ -250,7 +310,7 @@ export class SpaceMonopolyApp {
 
   private injectStyles(): void {
     const style = el('style');
-    style.textContent = CSS;
+    style.textContent = CSS; // rev 19: rev-17 stylesheet + appended menu rules
     document.head.appendChild(style);
     this.root.classList.add('sm-root');
     injectDialogStyles(); // rev 13: dialog CSS from dialogs.ts, order unchanged
@@ -259,40 +319,132 @@ export class SpaceMonopolyApp {
   private buildChrome(): void {
     // REV 14 (B3): menubar now full-width at top level of the column root;
     // board column (~68%) + side panel form the content row beneath it.
-    // (Menubar STRUCTURE is unchanged in rev 17 — dropdown recomposition
-    // is Batch 3.)
+    // REV 19 (BATCH 3): the menubar CONTENT is three dropdown menus
+    // (Project / Options / Help) per B2; the select element is DELETED
+    // (grid size now lives in Options → Grid Size, A4 flyout).
     const menubar = el('div', 'sm-menubar');
-    const mkMenu = (label: string, onClick: () => void): HTMLButtonElement => {
-      const b = el('button', undefined, label);
-      b.addEventListener('click', onClick);
-      menubar.appendChild(b);
-      return b;
+
+    // Leaf-item factory: div row with an 18px gutter (bullet lives there
+    // for grid items), label span, click handler guarded on enabled state.
+    // References are stored in this.menuItems under the given key —
+    // mainUpdate toggles .sm-disabled on these references directly.
+    const mkItem = (
+      key: string,
+      label: string,
+      onClick: () => void,
+      bullet?: HTMLElement,
+    ): HTMLDivElement => {
+      const item = el('div', 'sm-menuitem');
+      const gutter = el('span', 'sm-mitem-gutter');
+      if (bullet) gutter.appendChild(bullet);
+      item.appendChild(gutter);
+      item.appendChild(el('span', undefined, label));
+      item.addEventListener('click', () => {
+        if (item.classList.contains('sm-disabled')) return;
+        this.closeMenus();
+        onClick();
+      });
+      this.menuItems[key] = item;
+      return item;
     };
-    this.menuButtons['newGame'] = mkMenu('New Game', () => this.newGameDialog());
-    this.menuButtons['newGrid'] = mkMenu('Create New Grid', () => {
-      // MenuUpdate gates this to !progress (enforced in mainUpdate).
-      this.state.grid.randomise();
-      this.redrawGrid();
-    });
 
-    this.gridSizeSelect = el('select');
-    for (const t of [SMALL, MEDIUM, LARGE] as GridType[]) {
-      const cfg = GRID_CONFIGS[t];
-      const opt = el('option', undefined, `${cfg.xsize}\u00d7${cfg.ysize}`); // R9
-      opt.value = String(t);
-      this.gridSizeSelect.appendChild(opt);
+    // Dropdown-panel factory (display:none via CSS default; shown only
+    // by openMenu/openFlyout, position:fixed — see those for geometry).
+    const mkPanel = (...items: HTMLElement[]): HTMLDivElement => {
+      const panel = el('div', 'sm-menupanel');
+      for (const it of items) panel.appendChild(it);
+      document.body.appendChild(panel);
+      this.menuPanels.push(panel);
+      return panel;
+    };
+
+    // Top-level menu factory: click toggles; hover switches when a menu
+    // is already open (DEVIATION:[menu-interaction] — Windows behavior).
+    const mkTop = (label: string, panel: HTMLDivElement): HTMLButtonElement => {
+      const btn = el('button', 'sm-menubtn', label);
+      const idx = this.topMenus.length;
+      btn.addEventListener('click', () => {
+        if (this.openTopIdx === idx) {
+          this.closeMenus();
+        } else {
+          this.openMenu(idx, panel);
+        }
+      });
+      btn.addEventListener('mouseenter', () => {
+        if (this.openTopIdx >= 0 && this.openTopIdx !== idx) {
+          this.openMenu(idx, panel); // hover-switch
+        }
+      });
+      this.topMenus.push(btn);
+      menubar.appendChild(btn);
+      return btn;
+    };
+
+    // ---- GRID SIZE FLYOUT (A4 FIDELITY: literal asterisk captions) ---------
+    // Built first because the Options panel references it.
+    const gridSizes: Array<{ type: GridType; key: string; caption: string }> = [
+      { type: SMALL, key: 'grid-small', caption: '16*12 (80 turns)' },   // A4
+      { type: MEDIUM, key: 'grid-medium', caption: '22*18 (120 turns)' }, // A4
+      { type: LARGE, key: 'grid-large', caption: '28*24 (160 turns)' },   // A4
+    ];
+    const gridPanel = mkPanel();
+    for (const g of gridSizes) {
+      const bullet = el('span', undefined, '\u2022'); // • current-size marker
+      bullet.style.visibility = 'hidden';
+      this.gridBullets[g.key] = bullet;
+      gridPanel.appendChild(
+        mkItem(g.key, g.caption, () => this.setGridSize(g.type), bullet),
+      );
     }
-    this.gridSizeSelect.addEventListener('change', () => {
-      this.setGridSize(Number(this.gridSizeSelect.value) as GridType);
-    });
-    menubar.appendChild(this.gridSizeSelect);
+    this.gridFlyoutPanel = gridPanel;
 
-    // End Game mirrors orig EndGame1Click: concludes a game in progress.
-    this.menuButtons['endGame'] = mkMenu('End Game', () => this.doConclude(true));
-    this.menuButtons['prefs'] = mkMenu('Preferences', () => this.prefsDialog());
-    this.menuButtons['scores'] = mkMenu('High Scores', () => this.scoresDialog());
-    this.menuButtons['about'] = mkMenu('About', () => this.aboutDialog());
-    this.menuButtons['quit'] = mkMenu('Quit', () => this.quitConfirm());
+    // ---- PROJECT (B2 FIDELITY: New Game · End Game · View High Scores · Quit)
+    const projectPanel = mkPanel(
+      mkItem('newGame', 'New Game', () => this.newGameDialog()),
+      mkItem('endGame', 'End Game', () => this.doConclude(true)),
+      mkItem('scores', 'View High Scores', () => this.scoresDialog()),
+      mkItem('quit', 'Quit', () => this.quitConfirm()),
+    );
+
+    // ---- OPTIONS (Create New Grid · Grid Size ▸ · Preferences) --------------
+    // Grid Size is a CASCADE: hovering (or clicking) its row opens the
+    // flyout; hovering any other row in the panel closes it. The flyout
+    // is positioned to the RIGHT of the row with edge flip (openFlyout).
+    const optionsPanel = mkPanel();
+    optionsPanel.appendChild(
+      mkItem('newGrid', 'Create New Grid', () => {
+        // MenuUpdate gates this to !progress (enforced in mainUpdate).
+        this.state.grid.randomise();
+        this.redrawGrid();
+      }),
+    );
+    const gridRow = el('div', 'sm-menuitem');
+    gridRow.appendChild(el('span', 'sm-mitem-gutter'));
+    gridRow.appendChild(el('span', undefined, 'Grid Size'));
+    const gridArrow = el('span', 'sm-mitem-arrow', '\u25B6'); // ▶
+    gridRow.appendChild(gridArrow);
+    this.menuItems['gridSize'] = gridRow; // gating reference (whole row)
+    gridRow.addEventListener('click', () => this.openFlyout());
+    gridRow.addEventListener('mouseenter', () => this.openFlyout());
+    optionsPanel.appendChild(gridRow);
+    optionsPanel.appendChild(
+      mkItem('prefs', 'Preferences', () => this.prefsDialog()),
+    );
+    // Non-Grid rows close the flyout on hover.
+    for (const child of Array.from(optionsPanel.children)) {
+      if (child !== gridRow) {
+        child.addEventListener('mouseenter', () => this.closeFlyout());
+      }
+    }
+
+    // ---- HELP (About Space Monopoly) ----------------------------------------
+    const helpPanel = mkPanel(
+      mkItem('about', 'About Space Monopoly', () => this.aboutDialog()),
+    );
+
+    mkTop('Project', projectPanel);   // topMenus[0]
+    mkTop('Options', optionsPanel);   // topMenus[1]
+    mkTop('Help', helpPanel);         // topMenus[2]
 
     this.canvas = el('canvas', 'sm-board');
     this.ctx = this.canvas.getContext('2d')!;
@@ -319,7 +471,7 @@ export class SpaceMonopolyApp {
     // (1) current-player box → (2) company list → (3) names-only Players
     // box → (4) teal turn box → (5) Finish Turn. Replaces the rev-13
     // order (Players → Current Player dup → Companies → button) and
-    // absorbs B11's wonkiness ledger.
+    // absorbs B11's wonkiness ledger. (Restored intact in rev 19.)
     // ==========================================================================
     const side = el('div', 'sm-side');
 
@@ -391,6 +543,95 @@ export class SpaceMonopolyApp {
     this.root.appendChild(content);
   }
 
+  // ==========================================================================
+  // REV 19 (BATCH 3) — MENU OPEN/CLOSE/POSITIONING
+  // Panels are position:fixed; geometry computed at OPEN time from
+  // getBoundingClientRect (viewport coords — immune to ancestor stacking
+  // and to the flex/menubar-wrap layout; the rev-18 offsetLeft approach
+  // is dead). Panels are display:none by CSS default; openMenu/openFlyout
+  // reveal them; closeMenus hides ALL panels. The underlay exists ONLY
+  // while a menu is open (rev-18 permanent-overlay defect) and is
+  // REMOVED on close.
+  // ==========================================================================
+
+  private openMenu(idx: number, panel: HTMLDivElement): void {
+    this.closeMenus(); // hide any open panel/flyout/underlay first
+    this.openTopIdx = idx;
+    this.topMenus[idx].classList.add('sm-open');
+
+    this.ensureUnderlay();
+    panel.style.visibility = 'hidden';
+    panel.style.display = 'block';
+
+    const btnRect = this.topMenus[idx].getBoundingClientRect();
+    let left = btnRect.left;
+    // Horizontal clamp: never overflow the right viewport edge.
+    const vw = window.innerWidth;
+    const pw = panel.offsetWidth;
+    if (left + pw > vw - 4) left = Math.max(4, vw - 4 - pw);
+    panel.style.left = `${left}px`;
+    panel.style.top = `${btnRect.bottom + 2}px`;
+
+    panel.style.visibility = 'visible';
+  }
+
+  private openFlyout(): void {
+    if (this.openTopIdx !== 1) return; // flyout only meaningful under Options
+    if (this.flyoutOpen) return;
+    const flyout = this.gridFlyoutPanel;
+    const rowRect = this.menuItems['gridSize'].getBoundingClientRect();
+
+    this.flyoutOpen = true;
+    flyout.style.visibility = 'hidden';
+    flyout.style.display = 'block';
+
+    // Right-cascade with EDGE FLIP: mirror leftward if the flyout would
+    // overflow the right viewport edge (width-bound AND ≤720px regimes —
+    // same code path; measured while hidden so the flip is exact).
+    const vw = window.innerWidth;
+    const fw = flyout.offsetWidth;
+    let left = rowRect.right + 2;
+    if (left + fw > vw - 4) left = Math.max(4, rowRect.left - fw - 2);
+    flyout.style.left = `${left}px`;
+    flyout.style.top = `${rowRect.top}px`;
+
+    flyout.style.visibility = 'visible';
+  }
+
+  private closeFlyout(): void {
+    if (!this.flyoutOpen) return;
+    this.flyoutOpen = false;
+    this.gridFlyoutPanel.style.display = 'none';
+  }
+
+  private closeMenus(): void {
+    this.closeFlyout();
+    this.openTopIdx = -1;
+    for (const b of this.topMenus) b.classList.remove('sm-open');
+    for (const p of this.menuPanels) p.style.display = 'none';
+    this.closeUnderlay();
+  }
+
+  // Underlay: created on open, REMOVED on close (rev-18 defect fix —
+  // never resident while idle; all page interaction stays unblocked).
+  private ensureUnderlay(): void {
+    if (this.underlay) return;
+    const u = el('div', 'sm-menuunderlay');
+    u.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      this.closeMenus();
+    });
+    document.body.appendChild(u);
+    this.underlay = u;
+  }
+
+  private closeUnderlay(): void {
+    if (this.underlay) {
+      this.underlay.remove();
+      this.underlay = null;
+    }
+  }
+
   // Rows rebuilt in mainUpdate(); single-click row = that player's
   // details (DEVIATION:[singleclick-details]; supersedes rev-2's
   // FIDELITY:[itemindex] dblclick, whose list is now names-only anyway).
@@ -413,11 +654,8 @@ export class SpaceMonopolyApp {
     this.state.maxTurns = cfg.maxTurns;
     this.state.grid.resize(cfg.xsize, cfg.ysize, CELL_EMPTY);
     this.state.grid.randomise(); // FIDELITY: orig setGridSize randomises
-    this.gridSizeSelect.value = String(type);
-    // REV 14 (B3): canvas no longer sized to natural tile units — fitBoard
-    // computes the responsive display size (DPR-aware) and repaints.
-    // cfg.tileW/tileH stay as the DRAWING units (scaffold is FROZEN —
-    // GRID_CONFIGS is not ours to change); see fitBoard/redrawGrid.
+    // REV 19: no select element to sync (R9 superseded); the flyout
+    // bullet state is refreshed in mainUpdate via gridBullets.
     this.fitBoard();
     this.mainUpdate();
   }
@@ -910,12 +1148,34 @@ export class SpaceMonopolyApp {
     // bar (updateHint).
     this.turnBox.textContent = playing ? String(s.turn) : '';
 
-    // MenuUpdate: setup menus when !progress; End Game when progress.
-    this.menuButtons['newGame'].disabled = s.progress;
-    this.menuButtons['newGrid'].disabled = s.progress;
-    this.gridSizeSelect.disabled = s.progress;
-    this.menuButtons['prefs'].disabled = s.progress;
-    this.menuButtons['endGame'].disabled = !s.progress;
+    // MenuUpdate (REV 19: dropdown-menu form; polarity UNCHANGED from the
+    // rev-17 flat-button version — Session-19c-verified):
+    // - setup menus (New Game / Create New Grid / Grid Size / flyout
+    //   items / Preferences) disabled when progress;
+    // - End Game disabled when !progress;
+    // - View High Scores / About / Quit always enabled (no toggle).
+    const setupDisabled = s.progress;
+    const setMenuItem = (key: string, disabled: boolean): void => {
+      const item = this.menuItems[key];
+      if (item) item.classList.toggle('sm-disabled', disabled);
+    };
+    setMenuItem('newGame', setupDisabled);
+    setMenuItem('newGrid', setupDisabled);
+    setMenuItem('prefs', setupDisabled);
+    setMenuItem('gridSize', setupDisabled);
+    setMenuItem('grid-small', setupDisabled);
+    setMenuItem('grid-medium', setupDisabled);
+    setMenuItem('grid-large', setupDisabled);
+    setMenuItem('endGame', !s.progress);
+
+    // REV 19 (A4): flyout bullet marks the CURRENT grid type.
+    const cfg = s.gridConfig();
+    this.gridBullets['grid-small'].style.visibility =
+      cfg.xsize === GRID_CONFIGS[SMALL].xsize ? 'visible' : 'hidden';
+    this.gridBullets['grid-medium'].style.visibility =
+      cfg.xsize === GRID_CONFIGS[MEDIUM].xsize ? 'visible' : 'hidden';
+    this.gridBullets['grid-large'].style.visibility =
+      cfg.xsize === GRID_CONFIGS[LARGE].xsize ? 'visible' : 'hidden';
 
     this.updateHint();
   }

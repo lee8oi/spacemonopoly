@@ -1,6 +1,6 @@
 # RENDERER-NOTES.md — Annotation Archive (SPINE) for renderer.ts + dialogs.ts
 
-Companion to `renderer.ts` (UI layer, rev 17 — chrome/board/turn-flow) and
+Companion to `renderer.ts` (UI layer, rev 19 — chrome/board/turn-flow) and
 `dialogs.ts` (dialog layer, rev 3 — all modal/dialog presentation; split
 out of renderer.ts rev 12 in Session 17). Scaffold (logic layer,
 Session-13-amended) and its own archive: SCAFFOLD-NOTES.md. Active session
@@ -49,6 +49,8 @@ rationale and the revision spine for BOTH code files live here.
 | 15 | FIX:[viewport-fit] — height model MIN→FIT (root 100vh, min-height 0 chain, host-page normalization, internal side-panel scroll, ≤720px exempted). | SUPERSEDED-IN-PART by rev 16: full-size fixed ✔; reduced-window misalignment residual → rev 16. |
 | 16 | FIX:[board-top-align] — board region align-items center → flex-start (width-bound fits no longer float the board; top flush with panel top at every size; leftover collects between board and hint bar). CSS-only. | **VERIFIED by Lee — "looks good enough for now."** Batch 1 CLOSED. |
 | 17 | Session-21 Batch 2 (B6+B7+B8+B10, A5 restored): side-panel recomposition (original hierarchy, names-only plain list, single-click details); B8b top-box semantics; B8 teal turn box; B7 Finish Turn; B10 company rows thin-separator; "Companies" heading dropped pending Label5 evidence. | **VERIFIED by Lee (7/7 checklist).** Batch 2 CLOSED. |
+| 18 | Session-22 first issue of Batch 3 (menubar B2+A4). **DEFECTIVE — never verified; superseded in-session by rev 19.** Three defects: (1) rev-14/15/16 responsive chrome stylesheet lost → ResizeObserver sizing feedback loop (runaway board expansion, side panel pushed out of viewport); (2) permanent full-viewport transparent overlay appended at construction → ALL clicks intercepted, menus inert; (3) mainUpdate menu gating via querySelectorAll DOM scraping instead of held references; dropdown positioning via offsetLeft/offsetTop against unpositioned ancestors. Design intent correct — B2 mapping, A4 captions. Never reached disk verification. | **DEFECT REPORTED by Lee at load. Superseded.** |
+| 19 | Session-22 Batch 3 (B2+A4): menubar → three dropdown menus — **Project:** New Game · End Game · View High Scores · Quit; **Options:** Create New Grid · Grid Size ▸ · Preferences; **Help:** About Space Monopoly. A4 literal asterisk flyout captions (`16*12 (80 turns)` etc.), bullet marks current grid type; select element DELETED (R9 superseded-by-revision). Vanilla DOM menu system: position:fixed panels via getBoundingClientRect, right-cascade with edge flip, click-open + hover-switch + Esc/click-away, open-only underlay, DEVIATION:[menu-styling] dark-app-adapted Win2k chrome, DEVIATION:[menu-interaction]; MenuUpdate polarity unchanged, items held by reference. Rev-17 stylesheet restored verbatim (menu CSS purely appended). Two pre-transmission defects in the first rev-19 draft (panels visible at boot, undeclared gridFlyoutPanel field, missing Esc handler) were caught on self-review and corrected before any disk write — documented in the code header, no notes record beyond this row. | **VERIFIED by Lee ("everything appears functional. Resized window looks good.").** Batch 3 CLOSED. |
 
 ### dialogs.ts
 
@@ -86,10 +88,10 @@ ones are cosmetic/utility choices that are deliberately settled.
   Save writes, nothing loads (QUIRK prefs-half-wired; FormCreate reader
   commented out in orig — confirmed Session 15 SMMain.cpp read).
   loadPreferences() exists in scaffold if option (b) is chosen later.
-- **R9 (SETTLED)** Grid-size labels show ACTUAL geometry (16×12 /
-  22×18 / 28×24), not the orig overstated menu captions (QUIRK
-  menu-labels). **Supersession note: Batch 3/A4 will restore the orig
-  asterisk-caption flyout per Session-20 inventory.**
+- **R9 (SUPERSEDED-BY-REVISION, rev 19)** Grid-size select element with
+  ACTUAL geometry labels is DELETED; grid size is Options → Grid Size
+  flyout with the orig literal asterisk captions (A4). Actual-geometry
+  knowledge remains valid trivia (orig captions overstate both dims).
 - **R10 (RETIRED, Session 21)** Player list showed name + money
   (enhancement over orig names-only). List now NAMES-ONLY per A5
   FIDELITY (rev 17) — the enhancement itself is dead.
@@ -124,27 +126,26 @@ ones are cosmetic/utility choices that are deliberately settled.
 **Phase 3 COMPLETE; R15/R16 shipped and verified; renderer split verified;
 player reorder + Session-18 regression resolved; build gate closed;
 cosmetic backlog closed; open item #2 verified no-defect. Session-20
-interface inventory APPROVED and batch-locked; Batch 1 (revs 14–16)
-SHIPPED AND VERIFIED; Batch 2 (rev 17) SHIPPED AND VERIFIED — both
-closed. Batch 3 queued.** Betelguese spelling (open item #5) CLOSED
-as already-faithful.
+interface inventory APPROVED and batch-locked; Batch 1 (revs 14–16),
+Batch 2 (rev 17), Batch 3 (rev 19, via the rev-18 defect cycle) ALL
+SHIPPED, VERIFIED, CLOSED. All three Session-20 game-window batches are
+done.** Betelguese spelling (open item #5) CLOSED as already-faithful.
 
 Remaining work:
 
 1. ~~Cosmetic backlog~~ **CLOSED** (Session 19b — dialogs.ts rev 3).
 2. ~~Betelguese spelling check~~ **CLOSED** (Session 21): port spelling
    matches orig exactly.
-3. **SESSION 21 LAYOUT BATCHES** (canonical plan: SESSION20-INVENTORY.md
-   "Approved implementation plan"):
-   - Batch 1 — board area (B3+B4+B9): **DONE, VERIFIED** (revs 14–16).
-   - Batch 2 — side panel (B6+B7+B8+B10, A5 restored): **DONE,
-     VERIFIED** (rev 17).
-   - **Batch 3 — menubar (B2+A4): next.** B2: three dropdown menus
-     ("View High Scores" under Project, "About Space Monopoly"); A4:
-     Grid Size flyout under Options, literal asterisk separator,
-     turn-count captions (supersedes R9's menu presentation).
-   - Follow-on candidate: board-entity art at drawCellEntity()
-     (P1 cross token, P2 diamond; buildings TBD evidence).
+3. ~~SESSION 20 LAYOUT BATCHES~~ **ALL CLOSED** (Batches 1–3, revs
+   14–16 / 17 / 19). Follow-on candidates queue:
+   - **Board-entity art at drawCellEntity()** — P1 cross token
+     (modernized per-company color variants), P2 diamond (faithful vs
+     modernized — Lee's call); buildings TBD evidence. This is the
+     ORIGINAL Item 1 follow-on per the approved plan.
+   - D4 dialogs scope (merge/split/new-company/game-over/buy-sell/
+     player-info tabs/preferences tabs/high-scores/company-list +
+     white-dot info) — parked, opens after board-entity art or by
+     Lee's sequencing call.
 4. **Company-list heading QUESTION** (rev 17): wide screenshot of the
    orig side panel needed to settle Label5's text/position; if a
    heading exists, reinstate with extracted caption.
@@ -165,13 +166,22 @@ Remaining work:
 8. **Verify-before-ship trivia**: currency symbol raw byte (assume £);
    prefs persistence option (b) decision; SMMain.dfm captions (would
    also settle R1's timer interval) AND initial menu-enablement
-   defaults (DIALOGS-NOTES §11.7).
+   defaults (DIALOGS-NOTES §11.7 — rev 19 ships a default-derived
+   boot state; orig truth still uninspected).
 9. **Tile-art extraction seam**: drawCellEntity() is the single method
    to swap for bitmap tiles (SpacePoly2.res via Resource Hacker).
 10. **Housekeeping**: DIALOGS-NOTES.md = canonical record for dialogs.ts
     changes (pointers here); renderer.ts changes → full record here,
     new full entries APPENDED TO RENDERER-ARCHIVE.md (Session-21 spine
-    reorg — see header policy).
+    reorg — see header policy; the rev-18/19 defect cycle full entry
+    belongs in the archive at next append opportunity). PROCESS
+    LESSONS (Session 22): (a) preservation-verification rule — when a
+    reissue claims to carry prior-revision content forward, check the
+    carried sections against the source at composition time (rev-18
+    stylesheet loss passed the build gate silently); (b) pre-transmission
+    self-review caught three additional drafting defects in the first
+    rev-19 pass before any disk write — keep applying it to artifact
+    reissues.
 
 ---
 
@@ -198,11 +208,16 @@ Remaining work:
   (identical copies) is ONE read — client duplication.
 - Rev numbering: each reissued code file carries a distinct revision
   marker uniquely identifying its contents; renderer.ts and dialogs.ts
-  number independently (renderer rev 17+, dialogs rev 3+).
+  number independently (renderer rev 19+, dialogs rev 3+). Defect
+  corrections take a NEW rev number (rev-18 precedent: defective issue
+  never renumbered in place) — EXCEPT defects caught before any disk
+  write, which fold into the pending reissue under the same number
+  (first rev-19 draft precedent).
 - Build gate (Session 19a): `./build.sh` = `tsc && npx esbuild …` —
   type errors block the bundle. On-disk verification after reissues
   REMAINS REQUIRED (behavior-preserving/type-correct drift sails
-  through tsc).
+  through tsc — the rev-18 stylesheet loss proves this class of
+  defect passes the gate silently).
 - **Notes-spine policy (Session 21):** spine stays lean (index +
   statuses + queue + conventions); full detail only for
   pending/unstable revisions; verified → compressed; superseded →
@@ -211,6 +226,14 @@ Remaining work:
   layout change must be reasoned through BOTH fit regimes
   (width-bound and height-bound) at design time, not just the default
   full-size case.
+- **Preservation-verification rule (Session 22, rev-18 lesson):** when
+  a reissue claims to carry prior-revision content forward, the
+  carried sections must be checked against the source revision at
+  composition time, not trusted.
+- **Pre-transmission self-review (Session 22, rev-19 lesson):** re-read
+  generated artifacts for internal consistency (undeclared fields,
+  CSS defaults vs. construction-time assumptions, promised-but-missing
+  handlers) before issuing — the build gate does not catch these.
 - **Inventory-amendment recording (Session 21, Batch 2):** when Lee
   overrides an approved SESSION20-INVENTORY disposition at design
   time, the change is recorded as a named DEVIATION/FIDELITY flip
@@ -228,7 +251,7 @@ read and dispositioned; results summarized here; full Session-15
 narrative in RENDERER-ARCHIVE.md.
 
 | Source | Result |
-|---|---|---|
+|---|---|
 | HighScores.h | structural match; 3-tab layout confirmed (basis for rev 12's tabbed presentation) |
 | Preferences.h | checkbox names map 1:1; draft-commit flow confirmed |
 | Players.cpp | R2 evidence; otherwise faithful; reorder DONE Session 18; cosmetic trio DONE Session 19b |
@@ -248,8 +271,10 @@ optional ship trivia only (SMMain.dfm, SpacePoly2.res — see §3).
 
 ---
 
-*Last updated: Session 21 — Batch 2 (rev 17) VERIFIED by Lee (7/7
-checklist); Batch 1/2 CLOSED; Batch 3 (menubar B2+A4) queued; rev 17
-compressed in §1 index. Item #5 Betelguese closed. Company-heading
-QUESTION persists. Session-21 sessions summary: revs 14–17 delivered,
-all verified; responsive fit + top-alignment rules codified.*
+*Last updated: Session 22 close — **Batch 3 (menubar B2+A4) VERIFIED by
+Lee; all three Session-20 batches CLOSED.** Rev 18 defective (superseded);
+rev 19 verified incl. resized-window check. Rev-19 process lessons folded
+into §4 (preservation-verification, pre-transmission self-review).
+Next queued: board-entity art at drawCellEntity() (P1/P2 tokens) or D4
+by Lee's sequencing call; company-heading QUESTION and TOURNAMENT
+spot-check remain open.*
