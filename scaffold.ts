@@ -342,9 +342,9 @@ export interface GridConfig {
   iStart: number; // ImageList1 tileset base index
 }
 export const GRID_CONFIGS: Record<GridType, GridConfig> = {
-  [SMALL]:  { xsize: 16, ysize: 12, tileW: 37, tileH: 40, maxTurns: 80,  iStart: 0 },
+  [SMALL]:  { xsize: 16, ysize: 12, tileW: 37, tileH: 37, maxTurns: 80,  iStart: 0 },
   [MEDIUM]: { xsize: 22, ysize: 18, tileW: 27, tileH: 27, maxTurns: 120, iStart: 11 },
-  [LARGE]:  { xsize: 28, ysize: 24, tileW: 21, tileH: 20, maxTurns: 160, iStart: 22 },
+  [LARGE]:  { xsize: 28, ysize: 24, tileW: 21, tileH: 21, maxTurns: 160, iStart: 22 },
 };
 
 // Cell semantics (verified in SMMain.cpp redrawGrid/action):

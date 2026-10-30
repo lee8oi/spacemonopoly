@@ -1,31 +1,18 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 19
-// (rev 19 = Session 22, Batch 3 CORRECTION REISSUE over defective rev 18.
-// Rev 18 shipped three defects: the rev-14/15/16 responsive chrome
-// stylesheet was lost (ResizeObserver/canvas feedback loop — runaway
-// board expansion; side panel pushed out of the viewport), a permanent
-// full-viewport transparent overlay intercepted ALL clicks (menus
-// inert), and menu gating scraped the DOM with querySelectorAll.
-// Rev 19 restores the rev-17 stylesheet VERBATIM and rebuilds the
-// Batch-3 menu system cleanly: B2 three dropdown menus (Project/
-// Options/Help), A4 Grid Size flyout with literal asterisk captions,
-// fixed-position panels, open-while-used underlay, reference-held
-// menu items, MenuUpdate polarity unchanged. See RENDERER-NOTES §1a.
-//
-// PRE-TRANSMISSION FIX (same rev, before any disk write): the first
-// draft of this rev 19 carried three unreleased defects, caught on
-// self-review — (1) .sm-menupanel lacked display:none so ALL panels
-// rendered at boot and closeMenus never hid the open panel; (2) the
-// gridFlyoutPanel field was undeclared/unassigned (flyout would throw
-// on first hover); (3) the promised Esc handler was never wired. This
-// version corrects all three. Design record (NOTES §1a) unchanged —
-// it described the corrected behavior.
-//
-// Rev 17 carried: chrome/board/timer/mouse/turn-flow/actionHooks
-// (STYLESHEET AND ALL BELOW RESTORED INTACT FROM REV 17).
-// Rev 18's only surviving contribution: the menu DESIGN (B2 mapping,
-// A4 captions, interaction model) — its implementation is replaced.
-// dialogs.ts (rev 3) and scaffold UNTOUCHED.
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 22
+// (Session-23 entity-art tuning, second pass. Chain: rev 20 shipped
+// the entity art (+ on-disk one-char typo fix '2D'→'2d'); rev 21
+// removed the diamond highlight ellipse, enlarged the cross, improved
+// letter readability. Rev 22, per Lee's live feedback on rev 21:
+//  (1) CROSS: vertical (top/bottom) arms now extend to the CELL EDGES
+//      (full tile height) instead of stopping at the 92% span; the
+//      horizontal arms keep the 92% span. Tiles are taller than wide
+//      (4:3 board aspect), so edge-reaching vertical arms give the
+//      cross its original full-bleed look.
+//  (2) CENTER SQUARE: increased 50% → 58% of the min cell dim.
+// Letters, diamond, circle, sels unchanged from rev 21. Renderer-only;
+// dialogs.ts + scaffold UNTOUCHED. Notes reissue still DEFERRED until
+// the pieces are settled (Lee ruling).
 // ============================================================================
 
 import {
@@ -117,6 +104,12 @@ import type { SplitTableRow, MergerTableRow } from './dialogs';
 // broken (stylesheet lost / permanent overlay / DOM-scrape gating).
 // REV 19 (BATCH 3 CORRECTION): rev-17 stylesheet restored VERBATIM;
 // menu system rebuilt — see the REV 19 MENU block in buildChrome.
+// REV 20 (SESSION 23): board-entity art at drawCellEntity(); sels
+// correction in drawSels(). Tuned by revs 21–22.
+// REV 21 (SESSION 23b): diamond highlight removed, cross enlarged,
+// letter readability improved (stroked-outline halo).
+// REV 22 (SESSION 23c): vertical arms reach the cell edges; center
+// square enlarged to 58%.
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 
@@ -128,13 +121,22 @@ const SCORES_STORE_KEY = 'HighScores'; // R5
 const CHECKER_A = '#43435e';
 const CHECKER_B = '#36364d';
 const GRID_LINE = '#12121c';
-const CIRCLE_FILL = '#f0ead6';
-const CIRCLE_STROKE = '#1c1c2a';
-const DIAMOND_FILL = '#7ee08a';
-const DIAMOND_STROKE = '#1c1c2a';
-const SEL_FILL = 'rgba(0, 0, 204, 0.45)';  // clBlue translucent
-const SEL_STROKE = '#000';                 // clBlack
-const ACTIVE_STROKE = '#ffff00';           // clYellow
+// REV 20: CIRCLE updated to faithful blue, brightened for dark board.
+// Orig: flat medium-blue fill, thick dark-blue outline.
+// Brightened variant (tunable live): #4f83e8 fill, #16204a outline.
+const CIRCLE_FILL = '#4f83e8';
+const CIRCLE_STROKE = '#16204a';
+// REV 21: DIAMOND highlight ellipse REMOVED (read as a spurious "O" at
+// cell sizes). Flat vivid yellow rotated square, thin black outline.
+const DIAMOND_FILL = '#ffd74a';
+const DIAMOND_STROKE = '#12121c';
+// REV 20: SELS correction (folded in with entity art, Lee ruling).
+// Normal selection: solid royal blue (#0000FF) fill + thick white border.
+// Active (timer-cycled): solid blue square + thick lime-green border.
+const SEL_FILL = '#0000ff';
+const SEL_BORDER_NORMAL = '#ffffff';
+const SEL_BORDER_ACTIVE = '#32cd32'; // lime green
+const ACTIVE_STROKE = '#32cd32';     // same as SEL_BORDER_ACTIVE
 // REV 17 (B8): faithful-bright teal turn box (VCL clTeal #008080 as the
 // faithful anchor — hex is an approximation pending closer evidence;
 // dark numerals per approved design). Theming revisit is Lee-flagged.
@@ -163,7 +165,7 @@ const MENU_PANEL_Z = '905';
 // panel) — dedicated mobile pass deferred.
 // REV 15 (FIX:[viewport-fit]): html/body normalization; root height 100vh
 // + box-sizing; min-height: 0 down the flex chain; side panel scrolls
-// internally; ≤720px stacked mode exempted from the fit model.
+// internally; ≤720px exempted from the fit model.
 // REV 16 (FIX:[board-top-align]): .sm-boardregion align-items FLEX-START
 // (width-bound fits no longer float the board; leftover collects between
 // board and hint bar).
@@ -216,7 +218,7 @@ html, body { margin: 0; height: 100%; }
 .sm-swatch { width: 14px; height: 14px; border-radius: 3px; flex: none;
   border: 1px solid #333; }
 .sm-turnbox { background: #008080; color: #063030; font-size: 38px;
-  font-weight: 700; text-align: center; padding: 8px 0; border-radius: 4px;
+  font-weight: 700; text-align: center; padding: 8px  0; border-radius: 4px;
   flex: none; min-height: 24px; }
 @media (max-width: 720px) {
   .sm-root { height: auto; min-height: 100vh; }
@@ -734,8 +736,23 @@ export class SpaceMonopolyApp {
     this.drawSels();
   }
 
-  // SEAM (NOTES §4.6): swap for extracted bitmap tiles if SpacePoly2.res
-  // yields usable BITMAP resources; single-point replacement.
+  // REV 20/21/22: SEAM — board-entity art at drawCellEntity(). Evidence
+  // base: Lee's piece close-up screenshots + live play feedback.
+  // Contract: draws in BASE tile units under canvas transform.
+  //
+  // Entities:
+  //  (1) COMPANY_CELL_BASE+: symmetric CROSS TOKEN in company color,
+  //      thick dark outline tracing all edges. REV 22 GEOMETRY: center
+  //      square 58% of the min cell dim; VERTICAL arms (top/bottom)
+  //      extend to the CELL EDGES (full tile height — tiles are taller
+  //      than wide, full-bleed look); horizontal arms keep the 92%
+  //      span; arm width 33%. DEVIATION:[company-initial] — white
+  //      letter A–E on the center square, stroked-outline halo,
+  //      40%-of-cell font (rev 21).
+  //  (2) CELL_CIRCLE: faithful BLUE circle (brightened for dark checker).
+  //  (3) CELL_DIAMOND: faithful YELLOW rotated square, flat fill
+  //      (highlight ellipse removed rev 21).
+  //  DEVIATION:[token-flat-shading] — no bevels/drop shadows.
   private drawCellEntity(x: number, y: number): void {
     const s = this.state;
     const cfg = s.gridConfig();
@@ -744,18 +761,24 @@ export class SpaceMonopolyApp {
     const ctx = this.ctx;
     const cx = x * cfg.tileW + cfg.tileW / 2;
     const cy = y * cfg.tileH + cfg.tileH / 2;
+    const m = Math.min(cfg.tileW, cfg.tileH);
 
     if (cell === CELL_CIRCLE) {
-      const r = Math.min(cfg.tileW, cfg.tileH) * 0.28;
+      // REV 20: faithful blue circle, brightened for dark board.
+      // Size: ~90% of smaller tile dimension.
+      const r = m * 0.45;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fillStyle = CIRCLE_FILL;
       ctx.fill();
       ctx.strokeStyle = CIRCLE_STROKE;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.stroke();
     } else if (cell === CELL_DIAMOND) {
-      const r = Math.min(cfg.tileW, cfg.tileH) * 0.32;
+      // REV 20/21: faithful yellow rotated square, near-full cell,
+      // flat fill + black outline only (highlight ellipse removed —
+      // it read as a spurious glyph at cell sizes).
+      const r = m * 0.48;
       ctx.beginPath();
       ctx.moveTo(cx, cy - r);
       ctx.lineTo(cx + r, cy);
@@ -769,20 +792,59 @@ export class SpaceMonopolyApp {
       ctx.stroke();
     } else if (cell >= COMPANY_CELL_BASE) {
       const com = cell - COMPANY_CELL_BASE;
-      ctx.fillStyle = s.company[com]?.color ?? '#888';
-      ctx.fillRect(x * cfg.tileW + 1, y * cfg.tileH + 1, cfg.tileW - 2, cfg.tileH - 2);
-      ctx.strokeStyle = '#111';
+      const color = s.company[com]?.color ?? '#888';
+
+      // REV 22 cross geometry. Fractions of the min cell dim unless
+      // noted. Vertical arms reach the CELL EDGES in tile-height units
+      // (full bleed top/bottom); horizontal arms keep the 92% span so
+      // they stop just short of the left/right grid lines.
+      // REV 23: symmetric cross — all four arms use the SAME span
+      // fraction of the (now square) cell; no vertical full-bleed.
+      const centerSize = m * 0.70;
+      const armW = m * 0.33;
+      const halfSpan = m * 0.46;
+      const halfCs = centerSize / 2;
+      const armLen = halfSpan - halfCs;
+
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#12121c';
       ctx.lineWidth = 2;
-      ctx.strokeRect(x * cfg.tileW + 1, y * cfg.tileH + 1, cfg.tileW - 2, cfg.tileH - 2);
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.floor(cfg.tileH * 0.45)}px sans-serif`;
+
+      // Center square.
+      ctx.fillRect(cx - halfCs, cy - halfCs, centerSize, centerSize);
+      ctx.strokeRect(cx - halfCs, cy - halfCs, centerSize, centerSize);
+
+      // Arms — top, bottom, left, right (identical geometry both axes).
+      ctx.fillRect(cx - armW / 2, cy - halfSpan, armW, armLen);
+      ctx.strokeRect(cx - armW / 2, cy - halfSpan, armW, armLen);
+      ctx.fillRect(cx - armW / 2, cy + halfCs, armW, armLen);
+      ctx.strokeRect(cx - armW / 2, cy + halfCs, armW, armLen);
+      ctx.fillRect(cx - halfSpan, cy - armW / 2, armLen, armW);
+      ctx.strokeRect(cx - halfSpan, cy - armW / 2, armLen, armW);
+      ctx.fillRect(cx + halfCs, cy - armW / 2, armLen, armW);
+      ctx.strokeRect(cx + halfCs, cy - armW / 2, armLen, armW);
+
+      // DEVIATION:[company-initial] — white letter A–E on the center
+      // square (rev-21 rendering: stroked-outline halo + bold 40% font).
+      const letter = String.fromCharCode(65 + com);
+      const fontSize = Math.floor(m * 0.4);
+      ctx.font = `bold ${fontSize}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String.fromCharCode(65 + com), cx, cy);
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+      ctx.lineWidth = Math.max(2, m * 0.06);
+      ctx.strokeStyle = '#12121c';
+      ctx.strokeText(letter, cx, cy);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(letter, cx, cy);
     }
   }
 
-  // DrawSels + Timer1Timer equivalent (R3: full repaint per tick).
+  // REV 20: drawSels() corrected per screenshots (folded in with entity art).
+  // Normal selection: solid royal blue (#0000FF) fill + thick white border.
+  // Active (timer-cycled): solid blue square + thick lime-green border.
+  // Retires translucent-blue/thin-black-stroke normal and clYellow-stroke active.
   private drawSels(): void {
     const s = this.state;
     if (!s.sels) return;
@@ -794,15 +856,19 @@ export class SpaceMonopolyApp {
       const px = cx * cfg.tileW;
       const py = cy * cfg.tileH;
       if (i === this.timerTag) {
-        ctx.strokeStyle = ACTIVE_STROKE;
-        ctx.lineWidth = 4;
-        ctx.strokeRect(px + 2, py + 2, cfg.tileW - 4, cfg.tileH - 4);
-      } else {
+        // Active: solid blue square + thick green border.
         ctx.fillStyle = SEL_FILL;
         ctx.fillRect(px, py, cfg.tileW, cfg.tileH);
-        ctx.strokeStyle = SEL_STROKE;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(px + 1, py + 1, cfg.tileW - 2, cfg.tileH - 2);
+        ctx.strokeStyle = ACTIVE_STROKE;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 2, py + 2, cfg.tileW - 4, cfg.tileH - 4);
+      } else {
+        // Normal: solid blue fill + thick white border.
+        ctx.fillStyle = SEL_FILL;
+        ctx.fillRect(px, py, cfg.tileW, cfg.tileH);
+        ctx.strokeStyle = SEL_BORDER_NORMAL;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 2, py + 2, cfg.tileW - 4, cfg.tileH - 4);
       }
     }
   }
