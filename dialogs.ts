@@ -1,5 +1,5 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 3
+// SPACE MONOPOLY PORT — DIALOG LAYER (dialogs.ts) — rev 6
 // Session 18: Move Up / Move Down player reordering in the new-game dialog
 // (Players.cpp BitBtn5/BitBtn6). Rev 1 was extracted from renderer.ts rev 12
 // (reorganization only; no behavior change). Contains ALL modal/dialog
@@ -7,6 +7,25 @@
 // Session 19b (rev 3): cosmetic backlog — caption "Player Information",
 // name MaxLength 15, Go! disabled at empty list (orig UpdateButs), remove
 // guard dropped, single-row prefill (DEVIATION:[prefill-single]).
+// Session 24 (rev 4) — Batch A announcement-text fidelity (DIALOGS-NOTES
+// rev 7 §12.4): founding/split/merger wording formalized to the screenshot
+// evidence; split share-price bullet and merger combined-value line DROPPED
+// (§12.3); merger table columns reordered survivor-first per orig evidence;
+// DEVIATION:[color-banner] retained on all three.
+// Session 24 (rev 5) — Batch B game-over + player-details fidelity
+// (DIALOGS-NOTES rev 7 §12.4): standingsDialog — heading "Game Over!",
+// intro "At turn N…" + ellipsis fix, orig four-line summary block replaces
+// the winner one-liner, table captions Money Left / Worth of shares /
+// Net Wealth, button OK. detailsDialog — heading "Player Details", bold
+// "Details of {name}", summary rows FIRST with orig captions, then
+// "Share Details:" table with orig column captions, button Okay.
+// Session 24 (rev 6) — Batch C high-scores fidelity (DIALOGS-NOTES rev 7
+// §12.4): tab captions derived at RUNTIME from GRID_CONFIGS actual
+// geometry (orig captions "22 by 18"/"32 by 24" overstate Medium/Large —
+// corrected per Lee ruling §12.6-3; captions can no longer drift);
+// Position/Name/Net Wealth HEADER ROW added to the score table (rev-12
+// FIDELITY note updated); button Close → Okay. Other dialogs untouched
+// (carried from rev 5).
 // Rationale/history: RENDERER-NOTES.md / DIALOGS-NOTES.md. Scaffold untouched.
 // ============================================================================
 
@@ -204,6 +223,10 @@ export function toast(text: string): void {
 // FIDELITY:[comform-modal] — orig NewCom modal: company name, starting
 // share price, founder's grant. On dismissal, orig immediately opens
 // Info(i) — the trade dialog for the new company — chained via onDismiss.
+// Session 24 rev 4 (Batch A): wording formalized to orig screenshot
+// evidence (DIALOGS-NOTES rev 7 §12.4) — headline "New Company!", bold
+// lead "A new company has been formed", then the three orig sentences.
+// Color banner retained (DEVIATION:[color-banner] — orig is plain).
 export function foundingDialog(
   state: AppState,
   companyId: number,
@@ -215,7 +238,7 @@ export function foundingDialog(
     const c = s.company[companyId];
     const founder = s.player[s.curplay];
     const box = el('div');
-    box.appendChild(el('h3', undefined, 'New Company'));
+    box.appendChild(el('h3', undefined, 'New Company!'));
 
     const banner = el('div', 'sm-splitbanner');
     const swatch = el('span', 'sm-swatch');
@@ -223,6 +246,10 @@ export function foundingDialog(
     banner.appendChild(swatch);
     banner.appendChild(el('strong', undefined, c.name));
     box.appendChild(banner);
+
+    const lead = el('div');
+    lead.appendChild(el('strong', undefined, 'A new company has been formed.'));
+    box.appendChild(lead);
 
     box.appendChild(el('div', undefined,
       `The new company's name is ${c.name}.`));
@@ -252,6 +279,11 @@ export function foundingDialog(
 // range the orig loops (CLASSIC: all players; TOURNAMENT: current only).
 // Rows are EAGER-CAPTURED in renderer.ts's actionHooks (queued-modal
 // safety); only presentation lives here.
+// Session 24 rev 4 (Batch A): wording formalized to orig screenshot
+// evidence — headline "Shares Split Two For One!", orig two-sentence body
+// (the port's value-reached line and share-price bullet are DROPPED per
+// DIALOGS-NOTES §12.3 — both facts are carried by the orig sentence);
+// table captions "Shares Before Split" / "Shares After Split".
 export function splitDialog(
   state: AppState,
   companyId: number,
@@ -263,7 +295,7 @@ export function splitDialog(
     const s = state;
     const c = s.company[companyId];
     const box = el('div');
-    box.appendChild(el('h3', undefined, 'Stock Split!'));
+    box.appendChild(el('h3', undefined, 'Shares Split Two For One!'));
 
     const banner = el('div', 'sm-splitbanner');
     const swatch = el('span', 'sm-swatch');
@@ -273,16 +305,14 @@ export function splitDialog(
     box.appendChild(banner);
 
     box.appendChild(el('div', undefined,
-      `${c.name}\u2019s value has reached ${formatMoney(BigInt(oldPrice))}. ` +
-      'The company has split its stock 2-for-1:'));
-    box.appendChild(el('div', undefined,
-      `\u2022 Share price: ${formatMoney(BigInt(oldPrice))} \u2192 ` +
-      `${formatMoney(BigInt(c.value))}`));
+      `Shares in ${c.name} have split two for one. The previous share ` +
+      `price of ${formatMoney(BigInt(oldPrice))} has been changed to ` +
+      `${formatMoney(BigInt(c.value))}.`));
 
     // R15: orig SplitForm ListView — name / shares before / shares after.
     const table = el('table');
     const head = el('tr');
-    for (const h of ['Player', 'Shares before', 'Shares after']) {
+    for (const h of ['Player', 'Shares Before Split', 'Shares After Split']) {
       head.appendChild(el('th', undefined, h));
     }
     table.appendChild(head);
@@ -317,10 +347,17 @@ export function splitDialog(
 
 // FIDELITY:[mergerform-modal] — orig Merger form dialog with the per-player
 // ListView restored (R15): one row per player — name / shares in the
-// absorbed company / shares in the survivor / money earned — over the same
+// survivor / shares in the absorbed company / money earned — over the same
 // range the orig loops (CLASSIC: all players; TOURNAMENT: current only).
 // Row data is captured in renderer.ts's merger hook (mutation-before-
 // display, eager capture for queued-modal safety); only presentation here.
+// Session 24 rev 4 (Batch A): wording formalized to orig screenshot
+// evidence — the orig three sentences replace the port's combined-value
+// line (DROPPED per DIALOGS-NOTES §12.3); table columns reordered
+// SURVIVOR-FIRST per orig evidence ("Shares in Cannon Inc." precedes
+// "Shares in Debenese" in the original screenshot). Color banners retained
+// (DEVIATION:[color-banner]). NOTE: oldSurvivorValue/absorbedValue params
+// are now unused — retained to keep the renderer.ts call sites stable.
 export function mergerDialog(
   state: AppState,
   survivorId: number,
@@ -354,19 +391,21 @@ export function mergerDialog(
     banner2.appendChild(el('strong', undefined, survivor.name));
     box.appendChild(banner2);
 
-    const combined = el('div', 'sm-row');
-    combined.appendChild(el('span', undefined, 'Combined value:'));
-    combined.appendChild(el('strong', undefined,
-      `${formatMoney(BigInt(oldSurvivorValue))} + ` +
-      `${formatMoney(BigInt(absorbedValue))} = ` +
-      `${formatMoney(BigInt(survivor.value))}`));
-    box.appendChild(combined);
+    // Orig Merger body (Batch A): three formalized sentences.
+    box.appendChild(el('div', undefined,
+      `There has been a merger between ${survivor.name} and ` +
+      `${absorbed.name}.`));
+    box.appendChild(el('div', undefined,
+      `The new company will take the name of ${survivor.name}.`));
+    box.appendChild(el('div', undefined,
+      `The cost of ${survivor.name} shares will be ` +
+      `${formatMoney(BigInt(survivor.value))}.`));
 
-    // R15: orig Merger ListView — name / shares in A / shares in B /
-    // money earned (A = absorbed, B = survivor).
+    // R15: orig Merger ListView — name / shares in survivor / shares in
+    // absorbed / money earned (survivor first, per orig evidence).
     const table = el('table');
     const head = el('tr');
-    for (const h of ['Player', `Shares in ${absorbed.name}`, `Shares in ${survivor.name}`, 'Money earned']) {
+    for (const h of ['Player', `Shares in ${survivor.name}`, `Shares in ${absorbed.name}`, 'Money earned']) {
       head.appendChild(el('th', undefined, h));
     }
     table.appendChild(head);
@@ -374,8 +413,8 @@ export function mergerDialog(
       const tr = el('tr');
       if (r.playerIndex === s.curplay) tr.style.fontWeight = '700';
       tr.appendChild(el('td', undefined, r.name));
-      tr.appendChild(el('td', undefined, r.absorbedShares.toString()));
       tr.appendChild(el('td', undefined, r.survivorShares.toString()));
+      tr.appendChild(el('td', undefined, r.absorbedShares.toString()));
       tr.appendChild(el('td', undefined, formatMoney(r.moneyEarned)));
       table.appendChild(tr);
     }
@@ -785,6 +824,13 @@ export function tradeDialog(
 
 // --- Player details (ListBox1DblClick / playerDetailsView) ---------------------
 
+// Session 24 rev 5 (Batch B): presentation reordered + reworded to orig
+// screenshot evidence (DIALOGS-NOTES rev 7 §12.4) — heading "Player
+// Details", bold "Details of {name}", SUMMARY rows FIRST with orig
+// captions (Money in the Bank / Net worth of Shares / Total Wealth),
+// then "Share Details:" over the table with orig column captions
+// (Company Name / Number of Shares / Worth of Shares); button Okay.
+// Zombie-exclusion hint retained (DEVIATION:[hint-supplement]).
 export function detailsDialog(
   state: AppState,
   pnum: number,
@@ -798,10 +844,32 @@ export function detailsDialog(
   }
   const view = playerDetailsView(state, pnum);
   const box = el('div');
-  box.appendChild(el('h3', undefined, `Details of ${view.name}`));
+  box.appendChild(el('h3', undefined, 'Player Details'));
+
+  const lead = el('div');
+  lead.appendChild(el('strong', undefined, `Details of ${view.name}`));
+  box.appendChild(lead);
+
+  // Summary rows first (orig order).
+  const summary: Array<[string, string]> = [
+    ['Money in the Bank', formatMoney(view.money)],
+    ['Net worth of Shares', formatMoney(view.shareWealth)],
+    ['Total Wealth', formatMoney(view.netWealth)],
+  ];
+  for (const [k, v] of summary) {
+    const r = el('div', 'sm-row');
+    r.appendChild(el('span', undefined, `${k}:`));
+    r.appendChild(el('strong', undefined, v));
+    box.appendChild(r);
+  }
+
+  // Share holdings table (orig column captions).
+  box.appendChild(el('div', undefined, 'Share Details:'));
   const table = el('table');
   const head = el('tr');
-  for (const h of ['Company', 'Shares', 'Worth']) head.appendChild(el('th', undefined, h));
+  for (const h of ['Company Name', 'Number of Shares', 'Worth of Shares']) {
+    head.appendChild(el('th', undefined, h));
+  }
   table.appendChild(head);
   for (const row of view.rows) {
     const tr = el('tr');
@@ -811,23 +879,14 @@ export function detailsDialog(
     table.appendChild(tr);
   }
   box.appendChild(table);
+
   // QUIRK zombie-exclusion: EXISTING companies only — may legitimately
   // disagree with Total()/high-score wealth. Faithful.
   box.appendChild(el('div', 'sm-hint',
     'Existing companies only (zombie shares excluded \u2014 original behavior).'));
-  const rows: Array<[string, string]> = [
-    ['Money', formatMoney(view.money)],
-    ['Share wealth', formatMoney(view.shareWealth)],
-    ['Net wealth', formatMoney(view.netWealth)],
-  ];
-  for (const [k, v] of rows) {
-    const r = el('div', 'sm-row');
-    r.appendChild(el('span', undefined, `${k}:`));
-    r.appendChild(el('strong', undefined, v));
-    box.appendChild(r);
-  }
+
   const actions = el('div', 'sm-actions');
-  const ok = el('button', undefined, 'Dismiss');
+  const ok = el('button', undefined, 'Okay');
   actions.appendChild(ok);
   box.appendChild(actions);
   const close = modal(box);
@@ -922,6 +981,11 @@ export function prefsDialog(
 // BOTH the standalone High Scores menu dialog and the end-of-game second
 // modal; the current grid's tab is ACTIVATED on entry (orig behavior on
 // insert). New entries are bold + row-tinted (orig used row selection).
+// Session 24 rev 6 (Batch C): tab captions DERIVED AT RUNTIME from
+// GRID_CONFIGS actual geometry (labels can no longer drift if a grid
+// config changes; orig captions overstated Medium/Large and are
+// deliberately corrected per Lee ruling DIALOGS-NOTES §12.6-3);
+// Position/Name/Net Wealth header row added; button Close → Okay.
 export function scoresTableDialog(
   scores: ScoreRecord[][],
   gridType: GridType,
@@ -930,7 +994,12 @@ export function scoresTableDialog(
   const box = el('div');
   box.appendChild(el('h3', undefined, 'High Scores'));
 
-  const labels = ['Small (16\u00d712)', 'Medium (22\u00d718)', 'Large (28\u00d724)'];
+  // Captions from ACTUAL geometry (e.g. "16 by 12", "22 by 16",
+  // "28 by 24") — orig captions, corrected to match reality.
+  const labels = ([SMALL, MEDIUM, LARGE] as GridType[]).map((t) => {
+    const cfg = GRID_CONFIGS[t];
+    return `${cfg.xsize} by ${cfg.ysize}`;
+  });
 
   // Tab strip.
   const tabs = el('div', 'sm-tabs');
@@ -941,6 +1010,12 @@ export function scoresTableDialog(
   const renderTable = (t: number): void => {
     tabBody.textContent = '';
     const table = el('table');
+    // Orig header row (HighScores.dfm ListView Columns).
+    const head = el('tr');
+    for (const h of ['Position', 'Name', 'Net Wealth']) {
+      head.appendChild(el('th', undefined, h));
+    }
+    table.appendChild(head);
     for (let j = 0; j < scores[t].length; j++) {
       const rec = scores[t][j];
       const tr = el('tr');
@@ -966,7 +1041,7 @@ export function scoresTableDialog(
   box.appendChild(tabBody);
 
   const actions = el('div', 'sm-actions');
-  const ok = el('button', undefined, 'Close');
+  const ok = el('button', undefined, 'Okay');
   actions.appendChild(ok);
   box.appendChild(actions);
   const close = modal(box);
@@ -995,26 +1070,42 @@ export function scoresDialog(
 // FIDELITY:[highscores-modal] (rev 12): orig end-of-game sequence is
 // Finish() → GameOver modal → HighScores(true) modal — two sequential
 // dialogs. onClose chains the high-scores second modal.
+// Session 24 rev 5 (Batch B): presentation reworded to orig screenshot
+// evidence (DIALOGS-NOTES rev 7 §12.4) — heading "Game Over!", intro
+// "At turn N…" with the orig standby line, the four-line orig summary
+// block replaces the winner one-liner, table captions Money Left /
+// Worth of shares / Net Wealth, button OK.
 export function standingsDialog(
   st: FinalStandings,
   formatMoney: (amount: bigint) => string,
   onClose?: () => void,
 ): void {
   const box = el('div');
-  box.appendChild(el('h3', undefined, 'Game Over'));
+  box.appendChild(el('h3', undefined, 'Game Over!'));
+
   const intro = el('div');
   intro.textContent =
-    `Turn ${st.turn} \u2014 biggest company: ${st.biggestCompany.name} ` +
-    `(${st.biggestCompany.size} squares). `;
+    `At turn ${st.turn} the game is finally over. ` +
+    'Below are the game\u2019s final standings\u2026';
   box.appendChild(intro);
-  const winner = el('div', 'sm-row');
-  winner.appendChild(el('strong', undefined,
-    `Winner: ${st.winner.name} \u2014 ${formatMoney(st.winner.netWealth)}`));
-  box.appendChild(winner);
+
+  // Orig summary block (OverForm): four label/value lines.
+  const summary: Array<[string, string]> = [
+    ['Largest company', st.biggestCompany.name],
+    ['Size of company', `${st.biggestCompany.size} squares`],
+    ['Winning Player', st.winner.name],
+    ['Net Wealth of player', formatMoney(st.winner.netWealth)],
+  ];
+  for (const [k, v] of summary) {
+    const r = el('div', 'sm-row');
+    r.appendChild(el('span', undefined, `${k}:`));
+    r.appendChild(el('strong', undefined, v));
+    box.appendChild(r);
+  }
 
   const table = el('table');
   const head = el('tr');
-  for (const h of ['Player', 'Money', 'Share wealth', 'Net wealth']) {
+  for (const h of ['Player', 'Money Left', 'Worth of shares', 'Net Wealth']) {
     head.appendChild(el('th', undefined, h));
   }
   table.appendChild(head);
@@ -1030,7 +1121,7 @@ export function standingsDialog(
   box.appendChild(el('div', 'sm-hint', 'Results recorded in the high scores.'));
 
   const actions = el('div', 'sm-actions');
-  const ok = el('button', undefined, 'Close');
+  const ok = el('button', undefined, 'OK');
   actions.appendChild(ok);
   box.appendChild(actions);
   const close = modal(box);

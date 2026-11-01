@@ -1,235 +1,134 @@
-# DIALOGS-NOTES.md — Session 18–19 Record (rev 5)
+# DIALOGS-NOTES.md — Sessions 18–19 Record + Session 24 D4 Scope (rev 7)
 
-**Artifacts:** `dialogs-ts` (code, rev 3); `dialogs-notes` (this document)
-**Rev:** 5 — Sessions 18 (closed) + 19a build gate (closed, §8) + 19b cosmetics (closed, §10) + 19c item-#2 verification (closed, §11)
-**Sessions:** 18, 19
-**Files affected:** 19a: tooling only (`tsconfig.json` new, `build.sh` gated). 19b: `dialogs.ts` only (rev 3). 19c: **none** — verification only, no code change.
+**Artifacts:** `dialogs-ts` (code, rev 3 on disk; next reissue = rev 4); `dialogs-notes` (this document)
+**Rev:** 7 — Sessions 18 (closed) + 19a build gate (closed, §8) + 19b cosmetics (closed, §10) + 19c item-#2 verification (closed, §11) + Session 24 D4 scoping + **micro-decision resolutions (§12.6 — ALL RESOLVED, this revision)**
+**Sessions:** 18, 19, 24 (open)
+**Files affected:** 24: none yet (scoping only). Planned: `dialogs.ts` (revs 4+), `renderer.ts` (rev 24, Batch G).
+
+*(Filename note: pasted as `DIALOG-NOTES.md`; canonical name in the bootstrap is `DIALOGS-NOTES.md`.)*
 
 ---
 
-## 1. Source Verification Results (Players.cpp + Players.dfm)
+## 1–11. Sessions 18–19 record
 
-| Question | Answer | Evidence |
-|---|---|---|
-| Button count & placement | One Move Up + one Move Down, right-hand column; Move Up above Move Down | `.dfm` control list; screenshot |
-| Enable/disable rule | Enabled iff list non-empty **AND** a row is selected (`ItemIndex != -1`) | `UpdateButs()` |
-| Boundary handling | Buttons stay **enabled** at first/last row; click handler silently no-ops | `BitBtn5Click` / `BitBtn6Click` |
-| Selection after move | Follows the moved row (`ItemIndex = pos∓1`) | both handlers |
-| Overflow | **Move Up only**: `strcpy` into `char buffer[25]`. Move Down already safe | `BitBtn5Click` |
-| Reorder mechanism | String swap between adjacent `Strings[]` entries | both handlers |
-
-## 2. Design Decisions
-
-- **Enable rule:** enabled iff a row selected; boundary clicks silently no-op. Earlier "disable at first/last row" idea **rejected** — original never disables at boundaries. `FIDELITY`.
-- **Selection model:** row highlight via row-mousedown / input focus (rev 1 uses editable inputs, not a listbox). `DEVIATION:[selection-model]`.
-- **Reorder mechanism:** detach-and-splice of live DOM row nodes; `nameInputs` kept in step. `FIX:[players.cpp-strcpy]`.
-- **Remove-while-selected:** deleting the selected row clears selection (VCL behavior); deleting an earlier row shifts the index.
-
-## 3. Issuance History (protocol-relevant)
-
-1. First code issuance had defects (pane-vs-row index confusion, stale `rowIdx` captures, class-as-text), caught in self-review — reissued corrected same session.
-2. **Transcription drift incident:** the reissued artifact read `row.netWealth` correctly; the on-disk workspace copy diverged at the `standingsDialog` standings-table line — `row.netWorth` (see §5). Root cause of the Session 18 regression. Lesson: on-disk state must be re-verified after every artifact reissue, not assumed identical.
-
-## 4. Tag Ledger
-
-- `FIDELITY:[players.cpp — single Move Up/Move Down pair, right column, both initially disabled]`
-- `FIDELITY:[buttons enabled iff a row is selected; boundary clicks silently no-op]`
-- `FIDELITY:[selection follows the moved row, permitting click-walking]`
-- `FIX:[orig BitBtn5Click strcpy into char buffer[25] — replaced by DOM node splice]`
-- `DEVIATION:[selection = row highlight + mousedown/focus, not orig listbox model]`
-- `FIX:[rev-2 first-issuance defects — reissued corrected same session]`
-- `FIX:[standings-networth-typo — on-disk dialogs.ts read row.netWorth vs scaffold's FinalStanding.netWealth; one-line rename, verified fix]`
-- `FIX:[pipeline-no-typecheck — Session 19a: tsc gate added to build.sh; infrastructure only, no shipped-behavior change, no DEVIATION warranted]`
-- `FIDELITY:[players.dfm-caption — dialog heading "Player Information", not "New Game"]` *(19b)*
-- `FIDELITY:[players.cpp-maxlength — name inputs MaxLength = 15 (orig comment: "Maximum name length=15 chars + NULL")]` *(19b)*
-- `FIDELITY:[players.cpp-updatebuts-go — Go! disabled iff list empty, per orig UpdateButs() BitBtn3 branch]` *(19b)*
-- `FIDELITY:[players.cpp-btbtn2click-remove-guard-dropped — orig removes unconditionally; port's length>1 guard removed so the list CAN reach empty]` *(19b)*
-- `DEVIATION:[prefill-single — port prefills one "Player 1" row; orig starts empty (Go! disabled on entry). Lee-approved, solo quick-start]` *(19b)*
-- `FIDELITY:[menupdate-polarity — port mainUpdate() maps all five MenuUpdate() gates with exact polarity; High Scores/About/Quit ungated in both]` *(19c)*
-- `VERIFIED-NO-DEFECT:[doconclude-force-reentry — bootstrap open item #2: End Game self-disables via mainUpdate() on both conclusion paths; force=true reachable only while progress, mirroring orig EndGame1Click]` *(19c — new ledger category, introduced here)*
-
-## 5. REGRESSION REPORT — CLOSED
-
-**Symptom:** End Game and natural game end showed no standings modal, no high-scores modal; console: `TypeError: can't access property "toString", amount is undefined` at `formatMoney`, 4× repeats.
-
-**Root cause:** Property-name typo in the on-disk `dialogs.ts` `standingsDialog` standings-table loop — `row.netWorth` where the scaffold type (`FinalStanding`) and producer (`finishStandings`) define `netWealth`. TS-level type error (VSCode flagged it; the IDE diagnostic was available but unnoticed during debugging) that shipped anyway because the build pipeline transpiles without type-checking (esbuild-style). At runtime `row.netWorth === undefined` → `formatMoney(undefined)` → `amount.toString()` throws mid-table-build, aborting before `modal()` appended the overlay — hence "nothing appears."
-
-**Diagnosis trail (for the record):** healthy instrumented standings payload ruled out the data; grep proved the bundle current (ruled out stale build); Firefox's odd stack attribution (anonymous arrows attributed to enclosing functions, e.g. `doConclude` frames and the phantom `endGame` name) initially suggested impossible call edges and sent investigation toward bundle corruption. Stack was truthful; the named-frame misattribution was the red herring.
-
-**Resolution:** one-line rename `netWorth` → `netWealth` in dialogs.ts. **Verified: both end paths (End Game menu, natural final Continue) now show standings modal → tabbed high-scores modal.**
-
-**Mitigations recommended (procedural):**
-1. **Add `tsc --noEmit` as a pre-build gate** — ✅ **IMPLEMENTED Session 19a (§8).**
-2. **Treat IDE diagnostics as first-class evidence** — check the Problems panel before runtime debugging. Reinforced 19a: misconfigured toolchains also mislead, in the opposite direction (false errors from wrong lib target — §8.3).
-3. **Re-verify on-disk state after artifact reissues** — divergence between artifact and workspace is now a demonstrated failure mode (§3.2).
-4. High-score table confirmed unpolluted by the four failed attempts: winner's 9,600 vs. 1,000,000 default floor meant no insertion qualified, so no duplicate/malformed entries were written. (Also incidentally reconfirms the "no duplicate insertions" baseline item held.)
-
-## 6. Verification Status — ALL CLOSED
-
-| Check | Result |
-|---|---|
-| Reorder buttons, Go! turn-order commit, remove-while-selected | **Verified** |
-| End Game path → standings modal → high-scores modal | **Verified** (post-fix) |
-| Natural game end (final Continue) → same sequence | **Verified** (post-fix) |
-| High-scores storage integrity | **Confirmed clean** |
-| Bootstrap §6 baseline | Exercise during testing; no outstanding anomalies reported |
-
-**Player reorder task and end-game regression: CLOSED.**
-
-## 7. Out-of-Scope Observations (logged, not acted on)
-
-- ~~Dialog caption: orig "Player Information"; port "New Game".~~ **DONE 19b (§10).**
-- ~~Go! disable vs. status message when list empty.~~ **DONE 19b (§10).**
-- ~~Name length: orig `MaxLength = 15`; port unbounded.~~ **DONE 19b (§10).**
-- Tournament fallback: scaffold `startGame` verified to replicate orig 1-player TOURNAMENT → CLASSIC downgrade (`QUIRK-FIDELITY:[tournament-downgrade]`) — closed from prior open item. *(Relevant to solo play: one player + Tournament auto-downgrades to Classic, faithful.)*
-- ~~`doConclude(true)` after conclusion: candidate defect.~~ **CLOSED 19c — verified NOT a defect (§11).**
-- Carried forward: TOURNAMENT spot-check (rev-11 R15 caveat), unrun secondary checks, verify-before-ship trivia, tile-art extraction seam.
-
-## 8. SESSION 19a — BUILD GATE (bootstrap open item #1) — CLOSED
-
-### 8.1 Objective
-
-Make type errors fail the build, per Session 18 §5 mitigation 1 — the single guard that would have prevented the entire Session 18 regression hunt. Infrastructure change only; no shipped behavior affected, hence no `DEVIATION` tag.
-
-### 8.2 Toolchain discovery saga
-
-1. `npx tsc --noEmit` initially printed version/usage text only. Root cause: **npm resolved `tsc` to the deprecated `tsc@2.0.4` shim package** (pre-TypeScript-era artifact, no type-checking at all), not the TypeScript compiler. The `npm WARN deprecated tsc@2.0.4` line confirmed it. Lesson: a bare `npx <name>` fetches whatever package owns that name on npm; verify the resolved binary is the intended tool.
-2. Resolved by installing native `tsc` via apt and invoking directly (no `npx`).
-3. First honest run produced **58 errors across all 3 files** — but all of class TS2583 / TS2550 / TS2737 ("Cannot find name 'BigInt'", "Property 'from' does not exist", "BigInt literals not available when targeting lower than ES2020"): tsc's *default* target/lib assumes a pre-ES2015 standard library, while the port legitimately uses `BigInt`, `Array.from`, `Set`, `startsWith`, and `1n` literals throughout. **False alarms from misconfiguration, zero genuine type errors.** Retroactively confirms the Session 18 `netWealth` rename was the only latent type breakage in the tree.
-4. Correction: `--target es2020 --lib es2020,dom` (DOM lib required — renderer/dialogs touch `HTMLElement` et al.). Clean exit. Runtime output was never at risk: esbuild targets modern browsers regardless; this was purely about what the checker believes exists.
-
-### 8.3 Resulting on-disk changes (tooling only)
-
-- **New `tsconfig.json`** (minimal, no `strict`): `target: es2020`, `lib: [es2020, dom]`, `noEmit: true`, files = `scaffold.ts`, `renderer.ts`, `dialogs.ts`.
-- **`build.sh` (canonical build, gated):**
-  ```
-  tsc && npx esbuild renderer.ts --bundle --format=iife --global-name=SM --outfile=bundle.js
-  ```
-  `&&` chaining: tsc exit code gates esbuild — a type error aborts the build before `bundle.js` is written.
-- `check.sh` superseded/retired (its flag-laden manual command was replaced by tsconfig-driven `tsc`); keep only if a standalone type-check entry point is wanted.
-- `strict: true` deliberately **not** enabled — separate future decision; would surface a batch of null-flow/uninitialized-field warnings in code written without it.
-
-### 8.4 Verification record
-
-1. **Baseline:** tsconfig-driven `tsc` exits clean (post-lib correction).
-2. **Positive:** full `./build.sh` green — bundle 77.1 kb, esbuild banner, fresh output.
-3. **Negative (gate proven able to fail):** sabotaged `dialogs.ts:680` (`view.sharesOwned` → `view.sharesOwnd`) → tsc error at exact line/column (property not on view type — same error class as Session 18's `netWorth`), build aborted, no esbuild run, `bundle.js` not rewritten. Line reverted; rerun green. **Full fail→held→fix→pass cycle witnessed.**
-
-### 8.5 Baseline amendment
-
-Regression baseline gains: **gated build passes (`./build.sh` green)**; expected-negative: sabotaged type error blocks the bundle. Going forward, transcription drift against the types is caught at build time before it reaches `bundle.js` — the Session 18 failure mode is structurally closed.
-
-## 9. Open Items (post-Session 19)
-
-1. ~~Build gate~~ **CLOSED (§8).**
-2. ~~`doConclude(true)` post-game re-entry~~ **CLOSED — verified not a defect (§11).**
-3. ~~Cosmetic backlog~~ **CLOSED — verified (§10.4).**
-4. Carried from §7: TOURNAMENT spot-check, unrun secondary checks, verify-before-ship trivia sweep (incl. §11.6 `.dfm` initial-menu-state trivia), tile-art extraction seam.
-5. Housekeeping: cross-reference §11 in `RENDERER-NOTES.md` (that archive is renderer-layer; this verification concerns `renderer.ts` but was recorded here as the active session record).
-
-## 10. SESSION 19b — COSMETIC BACKLOG (bootstrap open item #3) — CLOSED
-
-### 10.1 Source verification (Players.cpp + Players.dfm, submitted this session)
-
-| Item | Original evidence | Port before |
-|---|---|---|
-| Dialog caption | `.dfm` TPlayInfo: `Caption "Player Information"` | heading read "New Game" |
-| Name length | `.dfm` Edit1 `MaxLength` property; `BitBtn1Click` comment "Maximum name length=15 chars + NULL" | inputs unbounded |
-| Go! on empty list | `UpdateButs()`: `Count == 0` → `BitBtn3 (Go!) Enabled = false`, else `true` | never disabled; click shows status message instead |
-
-All three claims verified against submitted sources — no unverified claims in the resulting code.
-
-### 10.2 Design decision — option C (Lee's call)
-
-The Go! rule is only observable if the list can reach empty. In the port the empty state was previously **unreachable**: rev 1 prefilled two rows AND guarded the per-row remove buttons with `nameInputs.length > 1`. Options considered: (A) add the rule as dead code; (B) full fidelity — also drop the prefill and start empty like orig; (C) drop the remove-guard and disable Go! at zero, keeping a (now single-row) prefill. **Chosen: C**, with Lee's amendment: prefill is **one** row ("Player 1") rather than two — solo quick-start; a second player is one "+ Add player" click away.
-
-- `DEVIATION:[prefill-single]` replaces the implicit rev-1 two-row prefill (which was itself undocumented relative to orig's empty start — now properly ledgered).
-- Orig's `BitBtn3Click` guards with `if (numplays > 0)`; the port's dead `names.length < 1` status branch is **removed** — its job moves to the disabled state, matching orig mechanics.
-- `status` element retained (layout parity with other dialogs) but now idle in `newGameDialog`.
-- Orig `UpdateButs()` also conditions a shared **Remove** button on selection; the port's per-row "−" buttons are inherently row-scoped, so that clause is subsumed under the existing `DEVIATION:[selection-model]` — not separately implemented.
-
-### 10.3 Implementation summary (dialogs.ts rev 3)
-
-All changes confined to `newGameDialog`:
-
-1. Heading `'New Game'` → `'Player Information'`.
-2. `addName`: `inp.maxLength = 15;` (hard clamp at entry, as the VCL edit control did; Go!'s existing `trim()` retained).
-3. Prefill: single `addName('Player 1')`.
-4. Remove-guard dropped: per-row "−" deletes unconditionally (orig `BitBtn2Click`); last-row deletion falls through to `setSelected(-1)`.
-5. `updateMoveButs()` → `updateButs()` (orig name), now also setting `go.disabled = nameInputs.length === 0`. Called from `setSelected` (covers removes), from the Add button (covers adds — orig `BitBtn1Click` calls `UpdateButs` post-add), and initial state set once at `go` creation. Add button's count cap (`MAX_PLAYERS`) unchanged.
-6. Go! handler: unreachable empty-list branch deleted.
-
-### 10.4 Verification record (Lee, live)
-
-| Check | Result |
-|---|---|
-| Heading reads "Player Information" | **Verified** |
-| One prefilled row "Player 1"; Go! enabled | **Verified** |
-| Remove all players → Go! disabled | **Verified** |
-| "+ Add player" → Go! re-enables | **Verified** |
-| Clicking Go! starts the game | **Verified** |
-| `./build.sh` green (gate guards transcription) | **Verified** |
-
-Remaining unrun from the §10.4 draft list: the >15-char clamp check, the Session 18 reorder/click-walking re-run, and the solo-Tournament auto-downgrade confirmation. Fold into the §9 item-4 sweep.
-
-## 11. SESSION 19c — OPEN ITEM #2 VERIFICATION: `doConclude(true)` RE-ENTRY — CLOSED, NO DEFECT
-
-### 11.1 The claim under test
-
-Bootstrap open item #2 / §7: "End Game menu re-enables post-game (`endGame.disabled = !s.progress`) and force=true bypasses the `concluded` guard — clicking End Game after a game concludes re-runs the tail (re-insert + `finishStandings` over post-`createComs` state). Candidate defect."
-
-### 11.2 Sources submitted
-
-`OverForm.cpp` (Finish()), `SMMain.cpp` (BitBtn1Click, EndGame1Click, MenuUpdate, closemain), `scaffold.ts` (finishStandings, concludeGame), `renderer.ts` rev 13.
-
-### 11.3 Static analysis — the claimed chain is unreachable
-
-Trace: `doConclude` — **both** branches — runs its synchronous sequence to completion, ending in `this.mainUpdate()` *before* `standingsDialog(...)` is called. `mainUpdate()`'s final block is the port's `MenuUpdate`:
-
-```typescript
-this.menuButtons['newGame'].disabled = s.progress;
-this.menuButtons['newGrid'].disabled = s.progress;
-this.gridSizeSelect.disabled = s.progress;
-this.menuButtons['prefs'].disabled = s.progress;
-this.menuButtons['endGame'].disabled = !s.progress;
-```
-
-`s.progress` is `false` on both conclusion paths at that moment (menu force branch sets it; natural end arrives via `advanceTurn` having set it), so **End Game is disabled the instant either conclusion fires** and stays disabled until `startGame` sets `progress = true` again. `menuButtons['endGame']` is assigned in exactly two places in rev 13 — creation and this line (grep-confirmed).
-
-### 11.4 Polarity mapping vs. orig `MenuUpdate()`
-
-| Orig `SMMain.cpp` | Port `renderer.ts` | Match |
-|---|---|---|
-| `CreateNewGrid1->Enabled = !progress` | `newGrid.disabled = s.progress` | ✓ |
-| `GridSize1->Enabled = !progress` | `gridSizeSelect.disabled = s.progress` | ✓ |
-| `EndGame1->Enabled = progress` | `endGame.disabled = !s.progress` | ✓ |
-| `NewGame1->Enabled = !progress` | `newGame.disabled = s.progress` | ✓ |
-| `Preferences1->Enabled = !progress` | `prefs.disabled = s.progress` | ✓ |
-| High Scores / About / Quit — not gated | not gated | ✓ |
-
-All five gated items and all three ungated items match. This is a faithful port of `MenuUpdate()`, not a partial one — the "only tracks endGame" worry raised mid-session proved unfounded.
-
-**Key insight:** the original has no `concluded` flag and no guard inside `Finish()`; **the menu state IS the guard**. Post-game, End Game is simply not clickable because `EndGame1Click` sets `progress=false` and then calls `MenuUpdate()`, which disables the very item that invoked it. The port reproduces this mechanism exactly.
-
-### 11.5 `force=true` is correct behavior, not a defect
-
-Orig `EndGame1Click` deliberately concludes mid-game with **no guard** — End Game is *supposed* to work while playing. In the port, `force=true` is reachable only while `progress` is true (the button is disabled otherwise), which is precisely the original's reachable state. The `concluded` guard exists to protect the *renderer-specific* Continue/"See Results" viewer path — a port addition for a control the original didn't have (orig's `BitBtn1` is `!sels & progress`, also self-disabling).
-
-Theoretical double-activation hole: `force=true` has no internal guard, so a hypothetical second synchronous invocation would re-run the tail. This is **faithful** — orig `EndGame1Click` is equally unguarded, and in both implementations the sole protection is the menu disabling itself. Unreachable in practice (browsers do not dispatch `click` on disabled buttons, and the first handler's `mainUpdate()` disables it synchronously).
-
-Tail composition also checked: orig redraws the board (clearing selection boxes) before `Finish()`; the port's `redrawGrid()` runs after `createComs` but still synchronously before the modal is appended/painted. The grid's cell contents are unchanged by `createComs` (it resets company *records*, not cells), so the final painted board state is identical — no observable gap.
-
-Trivia (non-issue): the force branch sets `s.progress = false` twice (branch + shared line). Harmless redundancy; no behavioral effect.
-
-### 11.6 Empirical confirmation (Lee, live)
-
-> "Clicking 'End Game' indeed closes out the game and disables the button until a new game is started."
-
-Static analysis and observed behavior agree. **Open item #2: CLOSED — verified faithful, no defect. No code change.**
-
-### 11.7 Residual unverified trivia
-
-Orig `FormCreate` calls `MainUpdate()` but **not** `MenuUpdate()` — so the original's *initial* menu enablement comes from `SMMain.dfm` control defaults, which have not been inspected. The port initializes via `mainUpdate()` (New Game / Create New Grid / Grid Size / Preferences enabled; End Game disabled). Almost certainly matches, but unverifiable without the `.dfm`. Logged for the verify-before-ship sweep (§9 item 4); no action proposed.
+(Carried forward verbatim from rev 5 — unchanged. Contents: §1 Players.cpp/.dfm source verification; §2 design decisions (reorder, selection model, remove-while-selected); §3 issuance history incl. transcription-drift incident; §4 tag ledger; §5 Session-18 regression report — CLOSED (`netWorth`→`netWealth`); §6 verification status — ALL CLOSED; §7 out-of-scope observations; §8 Session 19a build gate (`tsc` apt-native not npx; `./build.sh` = tsc && esbuild; sabotage-tested fail→held→fix→pass; tsconfig target es2020 + dom lib); §9 open items; §10 Session 19b cosmetic backlog (caption "Player Information", MaxLength 15, Go! empty-list disable, DEVIATION:[prefill-single]); §11 Session 19c doConclude re-entry — verified no defect, menu-state-is-the-guard, MenuUpdate polarity 5/5 + 3 ungated.)
 
 ---
-*Session 18: player reorder + end-game regression — closed. 19a: build gate — closed. 19b: cosmetic backlog — closed, verified. 19c: item-#2 verification — closed, no defect. Remaining: §9 item-4 sweep (TOURNAMENT spot-check, unrun secondary checks, verify-before-ship trivia incl. §11.7, tile-art seam) and the RENDERER-NOTES cross-reference.*
+
+## 12. SESSION 24 — D4 DIALOGS SCOPE (scoping; no code yet)
+
+### 12.1 Objective & evidence base
+
+Presentation fidelity pass over the remaining dialog forms. All forms already work
+functionally (revs 5–12 machinery: modal queue, eager capture, gating); this is look-
+and-wording fidelity only. Evidence: **13 Lee-held original screenshots** submitted this
+session in two bursts (5 + 8; first burst's images 6–13 failed delivery, resent in second
+burst — all 13 confirmed received and analyzed).
+
+### 12.2 Evidence inventory (verbatim strong layer; vision styling layer discarded)
+
+| # | Form | Orig evidence (verbatim text where load-bearing) |
+|---|---|---|
+| 1 | Merger dialog | Headline "Merger!"; body: "There has been a merger between A and B" / "The new company will take the name of A" / "The cost of A shares will be £N"; table: Player / Shares in A / Shares in B / **"Money Earnt"** (orig misspelling); OK button. |
+| 2 | Split dialog | Caption "Split"; headline "Shares Split Two For One!"; body: "Shares in A have split two for one. The previous share price of £X has been changed to £Y"; table: Player / Shares Before Split / Shares After Split; OK. |
+| 3 | New company dialog | Headline "A new company has been formed"; then "The new company's name is A." / "The shares will start at £N each." / "P will get five free shares in the company and £N"; OK. |
+| 4/12 | Game over dialog | Headline "Game Over!"; intro "At go number 38 the game is finally over. Below lists the game's final standings .."; summary block: Largest company / Size of company / Winning Player / Net Wealth of player; table: Player / Money Left / Worth of shares / Net Wealth; OK. (Two independent screenshots agree — corroborated.) |
+| 5 | Buy/sell (trade) dialog | Separate window (caption ≈ "Space Monopoly Services"); **company-colored header band** with company name + ‹ Previous / Next › flippers in the band; detail lines: "Company Size: 2 squares" / "Cost of Shares: £200" / "Major Shareholder: Lee with 5 shares."; group 1 header "You own N shares in this company" + [Sell All] [Sell >>>] [qty] Shares; group 2 header "You can buy up to N shares in this company" + [Max Buy] [Buy >>>] [qty] Shares; Finished button. |
+| 6 | Player info — Players tab | Tabs: Players / Game Type. Players: list + Move Up / Move Down (right column) + Remove + "Name:" field + Add; bottom buttons (vision read "Quit"/"Cancel" — Quit likely misread of Go!, unconfirmed). |
+| 7 | Player info — Game Type tab | "Select a mode:"; radios: Classic Game / Tournament; buttons Go! / Cancel. |
+| 8 | Preferences — General tab | Tabs: General / Game. "Currency Settings" group: Currency Unit **dropdown** (shows £); radios Prefix / Postfix; bottom: Save / Okay / Cancel. |
+| 9 | Preferences — Game tab | Group box: orig heading reads "Multiplayer Options" (Lee-confirmed from disk shot); subtext "(Recommended for multiplayer games, but can be used for single player games)"; checkboxes: Force Mergers / Force Expansion / (indented, boxed) Allow Company Creation / Hide Player details; bottom: Save / Okay / Cancel. |
+| 10 | Company list (right panel) | Five rows: colored dot + name (Atlantis Ltd. / Betelgeuse / Cannon Inc. / Debenese / Eridnus Corp.), thin separators, selection highlight on one row. **Lee ruling: NO header exists above the list in the orig right panel — Label5 question CLOSED.** |
+| 11 | High scores dialog | Three size selectors "16 by 12" / "22 by 18" / "32 by 24"; table with header row: Position / Name / Net Wealth; top entry tinted; Okay button. |
+| 13 | Player details dialog | Caption "Player Details"; content: "Details of Lee" — Money in the Bank: £6,000 / Net worth of Shares: £0 / Total Wealth: £6,000; then "Share Details:" table: Company Name / Number of Shares / Worth of Shares; Okay button. |
+
+**Evidence rulings made at scoping:**
+- Vision-read styling details (fonts, hex guesses, "wine glass icons", green checkmarks in buttons) are DISCARDED as evidence. Text + structure only.
+- "Filter buttons, no tabs" read on high scores is OVERRULED by the Phase-3 source ledger (HighScores.h: 3-tab PageControl) and the rev-12 port — the size labels are tab captions.
+- **White dot (company list): Lee confirmed** — the white dot signifies the current player can afford to buy at least one share in that company. (Renderer-side affordance; Batch G.)
+
+### 12.3 Lee's scoping rulings (Session 24, binding)
+
+1. **Wording policy:** formalize wording/spelling for better accuracy — orig misspellings and clumsy phrasing are corrected, not slavishly preserved. E.g. "Money Earnt" → "Money Earned"; "At go number 38" → "At turn 38" (port vocabulary; confirmed §12.6-1); trailing ".." → proper ellipsis.
+2. **Theme:** dark theme retained for all dialog chrome (DEVIATION:[menu-styling] family continuity). Broader themes discussion deferred to a future session (interacts with the deferred D1 light-theme pass).
+3. **Port additions:** follow Lumo's recommendations —
+   - DROP: merger "Combined value" sum line (redundant once orig's "The cost of A shares will be £N" sentence lands); split share-price bullet line (superseded by orig's before/after sentence).
+   - KEEP: the behavioral-quirk hints (tournament doubling note, tournament no-conversion note, zombie-exclusion note, trading-lock note) as small-print supplements — tagged DEVIATION:[hint-supplement] going forward.
+   - KEEP: company-color banners/swatches on announcement modals as dark-theme color identity (DEVIATION:[color-banner] — orig announcement dialogs are plain).
+4. **White dot:** renderer-side affordability marker (≥1 share affordable). Batch G — white dot REPLACES the R13 white border (Lee §12.6-7), sized so the company color remains clearly visible.
+5. **New game + preferences structure:** stay SINGLE PAGE (Lee: extra tab redundant). Orig tab structure NOT adopted → tags DEVIATION:[single-page-newgame], DEVIATION:[single-page-prefs].
+
+### 12.4 Formalized wording targets (reference for code batches)
+
+**Founding (Batch A):** h3 "New Company!" (window-caption role); bold lead "A new company has been formed"; then, verbatim-formalized: "The new company's name is {name}." / "The shares will start at {price} each." / "{player} will get five free shares in the company and {price}." Button: OK.
+
+**Split (Batch A):** h3 "Shares Split Two For One!"; body: "Shares in {name} have split two for one. The previous share price of {old} has been changed to {new}."; table headers: Player / Shares Before Split / Shares After Split. Keep tournament/classic doubling hint. Button: OK.
+
+**Merger (Batch A):** h3 "Merger!"; color banners retained (struck-through absorbed / survivor); body: "There has been a merger between {A} and {B}." / "The new company will take the name of {A}." / "The cost of {A} shares will be {new price}."; table headers: Player / Shares in {A} / Shares in {B} / Money Earned (spelling formalized from orig "Earnt"); combined-value line REMOVED. Keep tournament no-conversion + takeover hints. Button: OK.
+
+**Game over (Batch B):** h3 "Game Over!"; intro: "At turn {N} the game is finally over. Below are the game's final standings…" (grammar fixed per §12.6-1/2); four-line summary block: "Largest company: {name}" / "Size of company: {n} squares" / "Winning Player: {name}" / "Net Wealth of player: {money}"; table headers: Player / Money Left / Worth of shares / Net Wealth. Button: OK (was "Close"). Winner-summary one-liner retired in favor of the summary block.
+
+**Player details (Batch B):** h3 "Player Details"; bold "Details of {name}"; summary rows first: "Money in the Bank" / "Net worth of Shares" / "Total Wealth"; then "Share Details:" label over table: Company Name / Number of Shares / Worth of Shares; zombie hint retained (DEVIATION:[hint-supplement]). Button: Okay (was "Dismiss").
+
+**High scores (Batch C):** tab captions FIXED to actual geometry (Lee §12.6-3: "Fix it") — derive caption strings FROM GRID_CONFIGS at runtime (e.g. `${cols} by ${rows}`) so captions can never drift from reality; DEVIATION:[scores-caption-fix] (orig overstated Large as "32 by 24"; actual Large is smaller — read exact dims from scaffold at code time, never from memory). Table gains header row: Position / Name / Net Wealth; new-entry bold+tint retained. Button: Okay (was "Close").
+
+**Trade / buy-sell (Batch F):** company-colored header band (name + ‹ Previous / Next › flippers, dark-adapted); detail captions: "Company Size: {n} squares" / "Cost of Shares: {price}" / "Major Shareholder: {name} with {n} shares." (fall back to "Nobody." when none); group 1: "You own {n} shares in this company" over [Sell All] [Sell >>>] [qty field] Shares; group 2: "You can buy up to {n} shares in this company" over [Max Buy] [Buy >>>] [qty field] Shares; two SEPARATE quantity fields (orig has one per group); button "Finished" (was "Close"). Trading-lock hint retained. ">>>" glyphs kept literal (orig caption content).
+
+**Preferences (Batch E):** single page with two group sections (DEVIATION:[single-page-prefs]): "Currency Settings" (unit input stays free-text per R11 validation deviation; Prefix/Postfix converted from select to radio pair) and the Game group: heading **"Gameplay Options"** (renamed from orig "Multiplayer Options" — Lee ruling §12.6-6: orig's own subtext admits single-player use, so the name is inaccurate; formalization, not fidelity break) + recommendation subtext verbatim; checkboxes relabeled: "Force Mergers" / "Force Expansion" / "Allow Company Creation" (indented, disabled unless expansion — already implemented) / "Hide Player Details". Buttons: Save / Okay / Cancel with §12.6-5 semantics. **Persistence WIRED (option b — supersedes R8 faithful-dead; see §12.9):** preferences saved on Save AND read at game launch so they apply to future sessions.
+
+**New game (Batch D):** single page (DEVIATION:[single-page-newgame]): players section unchanged mechanically (Move Up / Move Down right column, per-row −, "+ Add player", MaxLength 15, prefill-single); mode selector converted from dropdown to radio pair under heading "Select a mode:" with labels Classic Game / Tournament; **grid-size dropdown REMOVED** (Lee §12.6-4 — canonical grid choice is the Options → Grid Size flyout, rev 19; orig player form has no grid control; matches orig division of responsibilities). Buttons: Go! / Cancel.
+
+### 12.5 Batch plan (sequenced smallest → largest)
+
+| Batch | Scope | File / rev |
+|---|---|---|
+| A | Announcement text fidelity: founding, split, merger (wording, table captions, drops per §12.3) | dialogs.ts rev 4 |
+| B | Game over + player details rewording/reordering | dialogs.ts rev 5 |
+| C | High scores: runtime-derived tab captions, header row, Okay | dialogs.ts rev 6 |
+| D | New game: mode radios + "Select a mode:" + grid-dropdown removal (single page) | dialogs.ts rev 7 |
+| E | Preferences: group sections, "Gameplay Options", radio pair, third button + WIRED persistence | dialogs.ts rev 8 |
+| F | Trade dialog re-layout: color header band, captioned details, two-group buy/sell, Finished | dialogs.ts rev 9 |
+| G | Company list white-dot affordance (renderer side panel; RETIRES the R13 white-border signal; dot sized within the swatch so the company color stays clearly visible — Lee §12.6-7) | renderer.ts rev 24 |
+
+Delivery cadence: one full-file reissue per batch (clean audit trail), DIALOGS-NOTES reissued when design records change; Lee may group batches into a single reissue if he prefers fewer transcriptions. Chat-patch mode available for tuning loops (Session-23 precedent); hand-edits take new revs.
+
+### 12.6 Micro-decisions — RESOLVED (Lee, Session 24)
+
+1. **"go number" → "turn"** — YES, fix grammar; deviate from orig (wording-policy formalization).
+2. **Trailing ".."** — YES, fix (proper ellipsis/period).
+3. **High-scores tab captions** — FIX: corrected to actual geometry, derived from GRID_CONFIGS at runtime. Orig's overstated "32 by 24" is not carried.
+4. **New-game grid dropdown** — REMOVE (Lumo recommendation accepted; canonical entry point = Options → Grid Size flyout).
+5. **Preferences Okay/Save/Cancel semantics** — agreed: Okay = apply to live game + close (no persist); Save = apply + persist; Cancel = discard. EXTENSION (Lee): preferences must be READ at launch and apply to future game launches — persistence wired, superseding R8 faithful-dead (see §12.9).
+6. **Preferences Game-tab group heading** — orig reads "Multiplayer Options" (Lee-confirmed). Lee proposes and adopts **"Gameplay Options"** for accuracy (applies to single-player too).
+7. **Affordability signal** — white dot REPLACES the white border (border "not as noticeable"); dot must not fill the swatch box — company color remains clearly visible.
+8. **Company list heading (Label5)** — no header exists above the list in the orig right panel (Lee ruling). Rev-17 heading-drop is now source-confirmed and PERMANENT. Close RENDERER-NOTES §3 item 2 at next renderer-notes reissue.
+
+### 12.7 Verification expectations (per batch)
+
+- `./build.sh` green after each transcription (gate catches type drift; behavioral spot-checks remain mandatory).
+- Batch-specific live checks: A — trigger/provoke split, merger, founding (CLASSIC + solo Tournament where reachable); B — end game via both paths (menu + natural finish); C — standalone High Scores + end-of-game second modal (new-entry tint) + captions match actual grid dims on all three sizes; D — mode radio commit, reorder re-run, grid choice ONLY via Options menu; E — draft-commit flow, expansion→creation enable chain, SAVE→relaunch persistence round-trip (write then read at next launch, all pref fields); F — buy/sell/max/sell-all paths, prev/next cycling, sels lockout; G — white dot matches affordability at several cash levels, across all three grid aspects.
+- TOURNAMENT single-row tables spot-check rides along opportunistically (standing §9 item).
+
+### 12.8 Evidence provenance & caveats (for the record)
+
+- Screenshots submitted by Lee this session, held on Lee's disk (cleared from conversation slots after extraction; re-attach on request for re-examination).
+- All screenshot-derived styling claims are weak-evidence and were discarded; wording/structure claims quoted above are the design basis.
+- The five-shot first-burst images were cleared from the conversation at Lee's request after text extraction; the eight second-burst images remain available for re-examination.
+- Erratum from rev 6 of this document: the trade-dialog evidence line contained a doubled word ("can buy buy up to") introduced at composition; the correct extraction is "You can buy up to N shares in this company".
+
+### 12.9 Persistence wiring design note (Batch E — R8 supersession)
+
+Lee's §12.6-5 extension chooses option (b) from the long-standing verify-before-ship
+trivia item: preferences become **wired** (saved AND read at launch), superseding
+R8's "faithful-dead" settlement and the QUIRK-[prefs-half-wired] behavior
+(orig FormCreate reader is commented out — we now deliberately diverge:
+DEVIATION:[prefs-wired]).
+
+Implementation considerations to resolve at Batch E design time:
+- Scaffold reportedly contains a dormant `loadPreferences()` (per R8 note). Investigate whether activating it requires a scaffold hand-amendment (logged-amendment precedent, square-cells pattern) or whether renderer-side boot-time read of the `Preferences` localStorage key suffices. Prefer the path that leaves the frozen scaffold untouched if functionally equivalent.
+- Storage shape must match what the existing Save path already writes (key `Preferences`) — read exactly what is written; do not invent a parallel schema.
+- Which fields apply live vs. next-game (e.g. currency unit likely applies to display immediately; force/expansion/hide-details likely only at next `startGame`) — decide per field with Lee at Batch E.
+- RENDERER-NOTES R8 status line + §3 item 7 trivia entry must be updated at the next renderer-notes reissue to record the flip to (b).
+
+---
+*Session 24 status: SCOPED + MICRO-DECISIONS RESOLVED (§12.6). No code issued. Next: Batch A → dialogs.ts rev 4 (announcement modals: founding, split, merger — wording per §12.4).*

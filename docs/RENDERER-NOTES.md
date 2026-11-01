@@ -90,10 +90,7 @@ ones are cosmetic/utility choices that are deliberately settled.
   per-table filenames). Part of the scores-format deviation in scaffold.
 - **R6 (SETTLED)** Player count 1..6 (orig limit unexamined in .dfm).
 - **R7 (SETTLED)** Quit ≈ confirm + page reload.
-- **R8 (SETTLED, source-confirmed)** Prefs persistence = faithful-dead:
-  Save writes, nothing loads (QUIRK prefs-half-wired; FormCreate reader
-  commented out in orig — confirmed Session 15 SMMain.cpp read).
-  loadPreferences() exists in scaffold if option (b) is chosen later.
+- **R8 (SUPERSEDED-BY-DESIGN, Session 24)** Prefs persistence = WIRED (option b; DEVIATION:[prefs-wired]): Save writes AND loadPreferences() activates at boot (scaffold has the dormant reader); prefs apply to future game launches. Supersedes the faithful-dead settlement and the QUIRK-[prefs-half-wired] observation. (See DIALOGS-NOTES rev 7 §12.9 for implementation considerations.)
 - **R9 (SUPERSEDED-BY-REVISION, rev 19)** Grid-size select element with
   ACTUAL geometry labels is DELETED; grid size is Options → Grid Size
   flyout with the orig literal asterisk captions (A4). Actual-geometry
@@ -107,8 +104,7 @@ ones are cosmetic/utility choices that are deliberately settled.
   Lee ruled KEEP (inventory A6). Relocated below board (rev 14); gains
   "Turn X of N" context in rev 17 (displaced from turn box per B8).
 - **R13 (Lee-approved deviation; basis source-confirmed)** Swatches keep
-  company color; affordability = white border. Orig fills the entire
-  swatch white with black pen.
+  company color; affordability = **white dot (REPLACES the white border per Lee Session 24 §12.6-7)** — dot sized within the swatch so the company color remains clearly visible. (DEVIATION:[white-dot-affordance]).
 - **R14 (RETIRED, rev 10, verified)** Standings auto-show at natural
   game end, per orig BitBtn1Click Finish().
 - **R15 (RETIRED, rev 11, verified — CLASSIC only)** Per-player tables
@@ -135,12 +131,9 @@ board-entity art CLOSED (rev 23 verified).**
 Remaining work:
 
 1. **D4 dialogs scope** (merge/split/new-company/game-over/buy-sell/
-   player-info tabs/preferences tabs/high-scores/company-list +
-   white-dot info) — NOW THE HEAD OF THE QUEUE. Lee-held screenshots
-   required to open.
-2. **Company-list heading QUESTION** (rev 17): wide screenshot of the
-   orig side panel needed to settle Label5's text/position; if a heading
-   exists, reinstate with extracted caption.
+   player-info-tabs/preferences-tabs/high-scores/company-list +
+   white-dot info) — SCOPED, AWAITING BATCH APPROVAL (DIALOGS-NOTES rev 7 §12.5). Screenshots collected (13 total, two-session burst).
+2. **~~Company-list heading QUESTION (rev 17)~~ — CLOSED** (Lee Session 24 §12.6-8: wide shot + memory confirm — no header exists above the company list in the orig right panel; rev-17 heading-drop is source-confirmed and PERMANENT.)
 3. **TOURNAMENT spot-check** (opportunistic): 2-player Tournament game —
    single-row split/merger tables, no-conversion hint, turn box + hint
    bar "(Tournament)" tag, natural end at maxturns+1. Requires an
@@ -151,7 +144,7 @@ Remaining work:
    three grid sizes render + fit correctly (aspect now grid-dependent
    1.33/1.22/1.17 — SMALL wider, LARGE taller than before); click
    mapping after resize; sels boxes still read well on square tiles.
-   Lee exercised visually at ≥1 grid size at Session-23 close.
+   Lee exercised visually at ≥1 grid size at Session 23 close.
 5. **Unrun secondary checks** (low priority): fresh-storage David/1M
    defaults view; high-score persistence across reload; menu dialog
    no-tinting; >15-char name clamp; Session-18 reorder re-run;
@@ -161,10 +154,9 @@ Remaining work:
    (Grid::clear() is uninitialized-loop UB). Port implements Lee's
    observed spec; nothing further unless new sources surface.
 7. **Verify-before-ship trivia**: currency symbol raw byte (assume £);
-   prefs persistence option (b) decision; SMMain.dfm captions (would
-   also settle R1's timer interval) AND initial menu-enablement
-   defaults (DIALOGS-NOTES §11.7 — rev 19 ships a default-derived
-   boot state; orig truth still uninspected).
+   SMMain.dfm captions (would also settle R1's timer interval) AND
+   initial menu-enablement defaults (DIALOGS-NOTES §11.7 — rev 19 ships
+   a default-derived boot state; orig truth still uninspected).
 8. ~~Tile-art extraction seam~~ **CLOSED-SCOPE (Session 23):** the
    crafting landed as CODE-DRAWN VECTOR ART at drawCellEntity() (revs
    20–23), not extracted .res bitmaps — screenshots supplied sufficient
@@ -306,4 +298,6 @@ amendment DEVIATION:[square-cells] logged (§6). Sels correction,
 blue circle, yellow diamond, cross tokens w/ initials all live.
 Session-23 mission CLOSED. Next queued: D4 dialogs scope (Lee-held
 screenshots required). Housekeeping: archive append for revs 18–23
-pending; scaffold-notes amendment line pending.**
+pending; scaffold-notes amendment line pending.*
+
+*Session 24 update (RENDERER-NOTES rev 8): R8 prefs persistence flipped to WIRED (DEVIATION:[prefs-wired]); R13 white-dot affordability REPLACES white-border (Lee §12.6-7); Company-list heading QUESTION CLOSED (§3 item 2); D4 scoping complete, awaiting batch approval (§3 item 1).*
