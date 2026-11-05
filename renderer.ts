@@ -1,18 +1,30 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 22
-// (Session-23 entity-art tuning, second pass. Chain: rev 20 shipped
-// the entity art (+ on-disk one-char typo fix '2D'→'2d'); rev 21
-// removed the diamond highlight ellipse, enlarged the cross, improved
-// letter readability. Rev 22, per Lee's live feedback on rev 21:
-//  (1) CROSS: vertical (top/bottom) arms now extend to the CELL EDGES
-//      (full tile height) instead of stopping at the 92% span; the
-//      horizontal arms keep the 92% span. Tiles are taller than wide
-//      (4:3 board aspect), so edge-reaching vertical arms give the
-//      cross its original full-bleed look.
-//  (2) CENTER SQUARE: increased 50% → 58% of the min cell dim.
-// Letters, diamond, circle, sels unchanged from rev 21. Renderer-only;
-// dialogs.ts + scaffold UNTOUCHED. Notes reissue still DEFERRED until
-// the pieces are settled (Lee ruling).
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 24
+// Chain of revs 20–22 (Sessions 23/23b/23c, issued): board-entity art
+// at drawCellEntity(); rev 21 removed the diamond highlight ellipse,
+// enlarged the cross, improved letter readability; rev 22 gave the
+// vertical arms full cell-height bleed and a 58% center square.
+// REV 23 (interim, hand-tuned on disk after rev 22, NEVER ISSUED until
+// now — written down here per the bootstrap's rev-table correction):
+// the logged scaffold amendment DEVIATION:[square-cells] made cells
+// square, so the cross was re-symmetrized — all four arms use the SAME
+// span fraction of the (now square) cell (halfSpan 46%); the rev-22
+// vertical full-bleed is retired; center square 70% of cell.
+// REV 24 (Session 25, Batch D): dialogs.ts rev 7 coupling edits —
+//  (1) NewGameDialogCallbacks.setGridSize was DELETED from dialogs.ts
+//      rev 7 (grid choice owned solely by Options → Grid Size, ruling
+//      §12.6-5), so this file's newGameDialog delegate drops its
+//      setGridSize entry. The app's own setGridSize() method is
+//      untouched (still used by the constructor and the Grid Size
+//      flyout).
+//  (2) mergerDialog call site pruned: the long-unused
+//      oldSurvivorValue/absorbedValue ARGUMENTS are gone (dialogs.ts
+//      rev 7 removed them from the signature). The local
+//      oldSurvivorValue is deleted; the local absorbedValue REMAINS —
+//      it is still needed to compute moneyEarned
+//      (= absorbed shares × PRE-merger absorbed value).
+// Notes reissue (RENDERER-NOTES rev 9) still deferred to the session's
+// milestone consolidation, per the Session-24 rhythm.
 // ============================================================================
 
 import {
@@ -110,6 +122,12 @@ import type { SplitTableRow, MergerTableRow } from './dialogs';
 // letter readability improved (stroked-outline halo).
 // REV 22 (SESSION 23c): vertical arms reach the cell edges; center
 // square enlarged to 58%.
+// REV 23 (interim, disk-only, now recorded): square-cells amendment —
+// symmetric cross, all arms same span fraction (46%), center 70%;
+// no vertical full-bleed.
+// REV 24 (SESSION 25, BATCH D): dialogs-rev-7 coupling — new-game
+// delegate drops setGridSize; merger call site prunes the two unused
+// mergerDialog arguments.
 const TIMER_INTERVAL_MS = 250;     // R1
 const SCORES_STORE_KEY = 'HighScores'; // R5
 
@@ -736,19 +754,18 @@ export class SpaceMonopolyApp {
     this.drawSels();
   }
 
-  // REV 20/21/22: SEAM — board-entity art at drawCellEntity(). Evidence
+  // REV 20/21/22/23: SEAM — board-entity art at drawCellEntity(). Evidence
   // base: Lee's piece close-up screenshots + live play feedback.
   // Contract: draws in BASE tile units under canvas transform.
   //
   // Entities:
   //  (1) COMPANY_CELL_BASE+: symmetric CROSS TOKEN in company color,
-  //      thick dark outline tracing all edges. REV 22 GEOMETRY: center
-  //      square 58% of the min cell dim; VERTICAL arms (top/bottom)
-  //      extend to the CELL EDGES (full tile height — tiles are taller
-  //      than wide, full-bleed look); horizontal arms keep the 92%
-  //      span; arm width 33%. DEVIATION:[company-initial] — white
-  //      letter A–E on the center square, stroked-outline halo,
-  //      40%-of-cell font (rev 21).
+  //      thick dark outline tracing all edges. REV 23 GEOMETRY (square
+  //      cells): center square 70% of the cell; ALL FOUR arms use the
+  //      SAME span fraction (46% half-span) — symmetric both axes, no
+  //      rev-22 vertical full-bleed; arm width 33%. DEVIATION:
+  //      [company-initial] — white letter A–E on the center square,
+  //      stroked-outline halo, 40%-of-cell font (rev 21).
   //  (2) CELL_CIRCLE: faithful BLUE circle (brightened for dark checker).
   //  (3) CELL_DIAMOND: faithful YELLOW rotated square, flat fill
   //      (highlight ellipse removed rev 21).
@@ -1122,8 +1139,11 @@ export class SpaceMonopolyApp {
         // quirk: never zeroed), so post-read equals pre-read; survivor
         // holdings ARE changed by CLASSIC conversion, hence post-read.
         // moneyEarned = absorbed shares × PRE-merger absorbed value.
+        // REV 24: the vestigial oldSurvivorValue local is DELETED (its
+        // only consumer was the old mergerDialog signature); absorbedValue
+        // REMAINS — it feeds moneyEarned. The mergerDialog call drops
+        // both value ARGUMENTS (dialogs.ts rev 7 pruned them).
         const s = this.state;
-        const oldSurvivorValue = s.company[survivorId].value;
         const absorbedValue = s.company[absorbedId].value;
         const start = s.gameType === TOURNAMENT ? s.curplay : 0;
         const end = s.gameType === TOURNAMENT ? s.curplay + 1 : s.numplays;
@@ -1147,8 +1167,6 @@ export class SpaceMonopolyApp {
           s,
           survivorId,
           absorbedId,
-          oldSurvivorValue,
-          absorbedValue,
           rows,
           (a) => this.formatMoney(a),
         );
@@ -1250,10 +1268,13 @@ export class SpaceMonopolyApp {
   // Thin methods delegating to dialogs.ts; the app supplies state,
   // formatMoney, and its own refresh/flow callbacks. Order of operations
   // on each path is preserved verbatim from the rev-12 in-file versions.
+  // REV 24 (Batch D): the setGridSize entry is REMOVED — dialogs.ts rev 7
+  // deleted it from NewGameDialogCallbacks (ruling §12.6-5: grid choice
+  // is owned solely by the Options → Grid Size menu entry). Remaining
+  // entries and their order are unchanged.
 
   private newGameDialog(): void {
     newGameDialog(this.state, {
-      setGridSize: (t) => this.setGridSize(t),
       onGameStarted: () => {
         this.concluded = false;
       },

@@ -1,11 +1,12 @@
 # RENDERER-NOTES.md — Annotation Archive (SPINE) for renderer.ts + dialogs.ts
 
-Companion to `renderer.ts` (UI layer, **rev 23 on disk — Session-23
-board-entity art COMPLETE and VERIFIED**) and `dialogs.ts` (dialog
-layer, rev 3 — all modal/dialog presentation; split out of renderer.ts
-rev 12 in Session 17). Scaffold (logic layer, Session-13-amended +
-Session-23 square-cells amendment — see §6 cross-ref) and its own
-archive: SCAFFOLD-NOTES.md. Active session record for dialogs.ts work:
+Companion to `renderer.ts` (UI layer, **rev 24 on disk — Session-25 Batch D
+coupling COMPLETE and VERIFIED; next reissue = rev 25, Batch G**) and
+`dialogs.ts` (dialog layer, **rev 7 on disk** — all modal/dialog
+presentation; split out of renderer.ts rev 12 in Session 17; rev history now
+canonical in DIALOGS-NOTES.md §13). Scaffold (logic layer, Session-13-amended
++ Session-23 square-cells amendment — see §6 cross-ref) and its own archive:
+SCAFFOLD-NOTES.md. Active session record for dialogs.ts work:
 DIALOGS-NOTES.md.
 
 **ARCHITECTURE (Session 21 reorg):** This file is now the LEAN SPINE —
@@ -24,6 +25,13 @@ ledger. The FULL narrative history lives in **RENDERER-ARCHIVE.md**
 
 Code tags (FIX:/DEVIATION:/FIDELITY:) point here; renderer.ts-layer
 rationale and the revision spine for BOTH code files live here.
+
+**REV 9 (Session 25):** cleanup pass N2 — Batch D execution recorded
+(renderer rev 24 row; dialogs revs 4–7 index rows added, pointing to
+DIALOGS-NOTES §13); §7 added mapping the renderer.ts code-header history
+into this spine (physical trim deferred to renderer rev 25); queue
+refreshed (§3); Batch G retargeted rev 24→25; housekeeping now tracks the
+N1/N2/N3 cleanup batches.
 
 ---
 
@@ -57,14 +65,22 @@ rationale and the revision spine for BOTH code files live here.
 | 21 | Tuning pass 1: diamond highlight ellipse REMOVED (read as a spurious "O"/"0" glyph); cross geometry rebuilt span-derived (span 92%, center 50%, armW 33%); letter readability (stroked-outline halo, 40% font). | Lee feedback: arms stubby/center small → superseded by rev 22. |
 | 22 | Tuning pass 2: vertical arms full-bleed to cell edges; center 50%→58%; horizontal arms keep 92% span. | **Lee HAND-TUNED on disk beyond the issued artifact** (center →0.70, cross lineWidth →2) and then applied Lumo's chat-issued symmetric-geometry patch — on-disk contents diverged from the issued rev → restamped rev 23. |
 | 23 | **On-disk final form, Session-23 close (Lee hand-edited over issued rev 22; never re-issued as an artifact):** (1) cross SYMMETRIC — all four arms identical geometry (`halfSpan = 0.46m`, `armLen = halfSpan − halfCs`), enabled by the square-cells scaffold amendment (§6); (2) Lee-tuned constants: `centerSize = 0.70m`, cross `lineWidth = 2`; (3) company-initial letter block restored after a hand-patch casualty (dropped during the symmetric-geometry edit, re-added verbatim per chat instructions); (4) drawSels `lineWidth = 3` (Lee tune — borders of the blue sels squares). **VERIFIED by Lee — "Now the game looks great."** Board-entity-art mission CLOSED. | **VERIFIED by Lee. Session-23 mission CLOSED.** |
+| 24 | Session-25 Batch D coupling with dialogs.ts rev 7 (grid-choice ownership ruling, DIALOGS-NOTES §12.6-4): newGameDialog DELEGATE drops its `setGridSize` entry (interface member deleted dialogs-side); merger actionHook call pruned to the rev-7 signature — `oldSurvivorValue` local deleted, `absorbedValue` local RETAINED (sole consumer of `moneyEarned` computation); app's own `setGridSize()` untouched (constructor + Grid Size flyout). Header additionally writes down the never-issued rev-23 interim state (previously recorded here only). Renderer-side behavior: none new — purely contract-tracking. | **VERIFIED by Lee (build green; new-game dialog shows no Grid row; same-size new game preserves circles; flyout re-geometries; merger announcement intact post-prune). Batch D CLOSED.** |
 
 ### dialogs.ts
+
+*(Full record Session 18 onward: DIALOGS-NOTES.md. Revs 4–7 execution
+detail: DIALOGS-NOTES.md §13.)*
 
 | Rev | Scope & tags | Verification |
 |---|---|---|
 | 1 | Session-17 split payload (all modal/dialog code + modal queue + dialog CSS). See renderer rev 13. | Smoke-pass ✔. |
 | 2 | Move Up/Move Down player reorder in new-game dialog; Session-18 transcription regression (row.netWorth → netWealth) diagnosed/fixed. Full record: DIALOGS-NOTES §§1–6. | Verified. |
 | 3 | Cosmetic backlog: caption "Player Information"; MaxLength 15; Go! disabled at empty list (updateButs); remove-guard dropped; DEVIATION:[prefill-single]. Full record: DIALOGS-NOTES §10. | Lee live ✔. |
+| 4 | Batch A (Session 24): founding/split/merger wording formalized to orig screenshot evidence; split price-bullet + merger combined-value line DROPPED; merger table survivor-first; DEVIATION:[color-banner] retained. | Lee live ✔ (provoked all three announcements). |
+| 5 | Batch B (Session 24): standingsDialog "Game Over!" + orig summary block + Money Left/Worth of shares/Net Wealth + OK; detailsDialog "Player Details" reordering/rewording + Okay. | Lee live ✔ (both end paths + details). |
+| 6 | Batch C (Session 24): high-scores tab captions RUNTIME-derived from GRID_CONFIGS; Position/Name/Net Wealth header row; Close → Okay. | **Lee-verified "accurate."** |
+| 7 | Batch D (Session 25): grid dropdown REMOVED; `NewGameDialogCallbacks.setGridSize` deleted; mergerDialog vestigial params `oldSurvivorValue`/`absorbedValue` pruned (folded §6-watch-item closure). NOTE: §12.4's mode-radio conversion NOT in this rev (bootstrap scoped D narrower) — open fold-in ruling, DIALOGS-NOTES §13.3. | Lee live ✔ (with renderer rev 24). |
 
 ---
 
@@ -90,11 +106,19 @@ ones are cosmetic/utility choices that are deliberately settled.
   per-table filenames). Part of the scores-format deviation in scaffold.
 - **R6 (SETTLED)** Player count 1..6 (orig limit unexamined in .dfm).
 - **R7 (SETTLED)** Quit ≈ confirm + page reload.
-- **R8 (SUPERSEDED-BY-DESIGN, Session 24)** Prefs persistence = WIRED (option b; DEVIATION:[prefs-wired]): Save writes AND loadPreferences() activates at boot (scaffold has the dormant reader); prefs apply to future game launches. Supersedes the faithful-dead settlement and the QUIRK-[prefs-half-wired] observation. (See DIALOGS-NOTES rev 7 §12.9 for implementation considerations.)
+- **R8 (SUPERSEDED-BY-DESIGN, Session 24)** Prefs persistence = WIRED
+  (option b; DEVIATION:[prefs-wired]): Save writes AND loadPreferences()
+  activates at boot (scaffold has the dormant reader); prefs apply to
+  future game launches. Supersedes the faithful-dead settlement and the
+  QUIRK-[prefs-half-wired] observation. (See DIALOGS-NOTES rev 8 §12.9
+  for implementation considerations; Batch E design discussion required
+  before code — scaffold-touch question.)
 - **R9 (SUPERSEDED-BY-REVISION, rev 19)** Grid-size select element with
   ACTUAL geometry labels is DELETED; grid size is Options → Grid Size
   flyout with the orig literal asterisk captions (A4). Actual-geometry
   knowledge remains valid trivia (orig captions overstate both dims).
+  **Session-25 extension (Batch D):** the new-game dialog's grid dropdown
+  is ALSO deleted — grid choice now flows through the flyout exclusively.
 - **R10 (RETIRED, Session 21)** Player list showed name + money
   (enhancement over orig names-only). List now NAMES-ONLY per A5
   FIDELITY (rev 17) — the enhancement itself is dead.
@@ -104,7 +128,10 @@ ones are cosmetic/utility choices that are deliberately settled.
   Lee ruled KEEP (inventory A6). Relocated below board (rev 14); gains
   "Turn X of N" context in rev 17 (displaced from turn box per B8).
 - **R13 (Lee-approved deviation; basis source-confirmed)** Swatches keep
-  company color; affordability = **white dot (REPLACES the white border per Lee Session 24 §12.6-7)** — dot sized within the swatch so the company color remains clearly visible. (DEVIATION:[white-dot-affordance]).
+  company color; affordability = **white dot (REPLACES the white border
+  per Lee Session 24 §12.6-7)** — dot sized within the swatch so the
+  company color remains clearly visible. (DEVIATION:[white-dot-affordance]).
+  Implementation = Batch G, renderer.ts **rev 25**.
 - **R14 (RETIRED, rev 10, verified)** Standings auto-show at natural
   game end, per orig BitBtn1Click Finish().
 - **R15 (RETIRED, rev 11, verified — CLASSIC only)** Per-player tables
@@ -126,13 +153,19 @@ ones are cosmetic/utility choices that are deliberately settled.
 ## 3. Queued Work / Open Items
 
 **Phase 3 COMPLETE; Session-20 batches 1–3 CLOSED; Session-23
-board-entity art CLOSED (rev 23 verified).**
+board-entity art CLOSED (rev 23 verified); Session-25 Batch D CLOSED
+(renderer rev 24 + dialogs rev 7, Lee-verified).**
 
 Remaining work:
 
-1. **D4 dialogs scope** (merge/split/new-company/game-over/buy-sell/
-   player-info-tabs/preferences-tabs/high-scores/company-list +
-   white-dot info) — SCOPED, AWAITING BATCH APPROVAL (DIALOGS-NOTES rev 7 §12.5). Screenshots collected (13 total, two-session burst).
+1. **D4 dialogs batches — A/B/C/D CLOSED** (dialogs revs 4–7, all
+   Lee-verified; execution record DIALOGS-NOTES §13). Remaining:
+   **Batch E — preferences** (dialogs.ts rev 8): §12.9 design discussion
+   FIRST (scaffold `loadPreferences()` activation — frozen-file amendment
+   question needs a Lee ruling) + open mode-radio fold-in ruling
+   (DIALOGS-NOTES §13.3). **Batch F — trade dialog re-layout**
+   (dialogs.ts rev 9). **Batch G — company-list white dot**
+   (renderer.ts **rev 25** — rev 24 consumed by Batch D coupling).
 2. **~~Company-list heading QUESTION (rev 17)~~ — CLOSED** (Lee Session 24 §12.6-8: wide shot + memory confirm — no header exists above the company list in the orig right panel; rev-17 heading-drop is source-confirmed and PERMANENT.)
 3. **TOURNAMENT spot-check** (opportunistic): 2-player Tournament game —
    single-row split/merger tables, no-conversion hint, turn box + hint
@@ -165,19 +198,31 @@ Remaining work:
    is ever wanted later.
 9. **Light theme (D1)**: entity-art hexes were tuned for the DARK board
    only (Lee ruling Session 23); a light-theme pass (checker + token
-   palette revisit) is a future Lee-scheduled batch.
-10. **Housekeeping**: DIALOGS-NOTES.md = canonical record for dialogs.ts
-    changes (pointers here); renderer.ts changes → full record here,
-    new full entries APPENDED TO RENDERER-ARCHIVE.md. **PENDING ARCHIVE
-    APPENDS: revs 18/19 (defect-cycle narrative) AND revs 20–23
-    (entity-art chain incl. the '2D' typo erratum and Lee's hand-tune
-    history)** — fold into the next archive touch. PROCESS LESSONS
-    (Session 22): (a) preservation-verification rule; (b)
-    pre-transmission self-review — Session 23 addendum: the self-review
-    certified a byte-identical line that was NOT byte-identical (rev-20
-    '2D' typo). Lesson: certifications must come from re-reading the
-    ISSUED artifact text, not from composing-side memory; the build
-    gate + Lee's on-disk diff remain the authoritative checks.
+   palette revisit) is a future Lee-scheduled batch. (Interacts with
+   the parked multi-theme discussion, Lee-raised end of Session 24.)
+10. **Minor dialog CSS pass** (Lee-requested, Session 24 — twice): a
+    wanted FUTURE pass on announcement/dialogs styling; parked
+    separately from D4 batches.
+11. **Housekeeping / cleanup batches (Session 25)**:
+    - **N1 (dialogs spine) — DONE**: DIALOGS-NOTES rev 8 issued
+      (Session 25) — Batch A–D record + absorbed dialogs.ts code-header
+      history (§13.2); dialogs.ts header trim deferred to rev 8 (Batch E).
+    - **N2 (renderer spine) — DONE**: THIS reissue (rev 9) — Batch D
+      recorded; renderer.ts code-header content mapped into §7 below;
+      header trim deferred to renderer rev 25 (Batch G).
+    - **N3 (archives) — PENDING**: attach RENDERER-ARCHIVE.md and append
+      the full narratives for **revs 18/19 (defect-cycle)** AND **revs
+      20–23 (entity-art chain incl. the '2D' typo erratum and Lee's
+      hand-tune history)**. PROCESS LESSONS (Session 22): (a)
+      preservation-verification rule; (b) pre-transmission self-review —
+      Session 23 addendum: the self-review certified a byte-identical
+      line that was NOT byte-identical (rev-20 '2D' typo). Lesson:
+      certifications must come from re-reading the ISSUED artifact
+      text, not from composing-side memory; the build gate + Lee's
+      on-disk diff remain the authoritative checks.
+    - SCAFFOLD-NOTES.md amendment-log line for DEVIATION:[square-cells]
+      still pending (Lee to add at next scaffold-notes touch — §6
+      renderer-side record already in place).
 
 ---
 
@@ -205,7 +250,7 @@ Remaining work:
   (identical copies) is ONE read — client duplication.
 - Rev numbering: each reissued code file carries a distinct revision
   marker uniquely identifying its contents; renderer.ts and dialogs.ts
-  number independently (renderer rev 23 on disk, dialogs rev 3).
+  number independently (renderer rev 24 on disk, dialogs rev 7).
   Defect corrections take a NEW rev number — EXCEPT defects caught
   before any disk write, which fold into the pending reissue under the
   same number (first rev-19 draft precedent). **Session-23 extension
@@ -242,6 +287,13 @@ Remaining work:
   closed (game-window scope) with corrections riding in the rev
   entry. Design-time amendments BEFORE code issuance leave no
   cancelled-deviation residue in shipped artifacts.
+- **Cross-file coupling rule (Session 25, Batch D precedent):** when an
+  interface shrink spans two code files, the dependent call-site edit
+  rides the same change window as the contract change, sequenced
+  contract-first (dialogs rev 7 issued before renderer rev 24, so the
+  renderer composition target was final text, not a hypothetical).
+  The transient red between the two issues is accepted by design —
+  no build occurs mid-window.
 
 ---
 
@@ -288,16 +340,61 @@ optional ship trivia only (SMMain.dfm, SpacePoly2.res — see §3).
   historical record: the rev-14–16 "aspect-preserved (4:3)" code
   comments were WRONG — the port board was ~1.22:1 by scaffold design
   (and the original likewise), never 4:3.
+- **DIALOGS, Session-25 rev chain transfer:** dialogs.ts rev history
+  (revs 1–7) is now canonical in DIALOGS-NOTES.md §13 (spine rev 8,
+  cleanup pass N1). The dialogs index above is a COMPRESSED POINTER —
+  do not expand it here.
 
 ---
 
-*Last updated: Session 23 close — **board-entity art COMPLETE: revs
-20 (shipped, typo erratum) → 21 → 22 → 23 (on-disk final, Lee-tuned,
-VERIFIED — "Now the game looks great."). Square-cells scaffold
-amendment DEVIATION:[square-cells] logged (§6). Sels correction,
-blue circle, yellow diamond, cross tokens w/ initials all live.
-Session-23 mission CLOSED. Next queued: D4 dialogs scope (Lee-held
-screenshots required). Housekeeping: archive append for revs 18–23
-pending; scaffold-notes amendment line pending.*
+## 7. Cleanup pass N2 (Session 25) — renderer.ts code-header absorption map
 
-*Session 24 update (RENDERER-NOTES rev 8): R8 prefs persistence flipped to WIRED (DEVIATION:[prefs-wired]); R13 white-dot affordability REPLACES white-border (Lee §12.6-7); Company-list heading QUESTION CLOSED (§3 item 2); D4 scoping complete, awaiting batch approval (§3 item 1).*
+Lee direction (Session 25): historical commentary migrates OUT of the
+code headers INTO the spines/archives; spines become the authoritative
+history. For `renderer.ts`, the header mass maps onto EXISTING spine
+sections as follows — nothing needed rewriting, only pointing:
+
+| Code-header content (rev 24 on disk) | Spine home |
+|---|---|
+| R2/R9/R10/R14/R15/R16 "RETIRED" annotation blocks; R9 "superseded" line | §2 (assumption statuses) — already verbatim-equivalent |
+| REV 13 SPLIT / REV 14 / REV 15 / REV 16 / REV 17 / REV 18 / REV 19 / REV 20 / REV 21 / REV 22 / REV 23 / REV 24 changelog comments | §1 index rows (equal or greater detail) |
+| Palette constants commentary (dark-checker, entity hexes, sels colors, turnbox, menu chrome) | §1 revs 14/17/19/20–23 rows; D1 parked item §3-9 |
+| DEVIATION:[doconclude-composes-tail] block + re-sync warning | §1 rev 12 row (RE-SYNC WARNING preserved); §3-1 (scaffold-touch consequence) |
+| Batch D coupling notes (rev 24 additions) | §1 rev 24 row |
+
+**Content that remains CODE-INTERNAL by design** (works-as-comments;
+trim should keep these, they document live invariants, not history):
+
+- REV-6 queue contract on `queueModal` (overlays on dialogs.ts, but the
+  overlay-dismiss-then-release order binds callers — rev 6 row).
+- Rev-14 base-units warnings at `redrawGrid`/`fitBoard` (clearRect bounds
+  and transform math — live correctness constraints).
+- `drawCellEntity` seam block (contract: base tile units under canvas
+  transform; geometry fraction meanings).
+- R15 eager-capture "do not move capture" note in actionHooks.
+- Inline FIDELITY/DEVIATION/QUIRK tags at their sites (they point here).
+
+**Physical trim:** DEFERRED to renderer.ts rev 25 (Batch G) — no rev
+burned on comment moves. From rev 25, the renderer.ts header collapses
+to: terse role statement, current-rev change note, and "History:
+RENDERER-NOTES.md §1/§7; archives in RENDERER-ARCHIVE.md."
+
+---
+
+*Last updated: Session 23 close — board-entity art COMPLETE: revs 20
+(shipped, typo erratum) → 21 → 22 → 23 (on-disk final, Lee-tuned,
+VERIFIED — "Now the game looks great."). Square-cells scaffold amendment
+DEVIATION:[square-cells] logged (§6). Session-23 mission CLOSED.*
+
+*Session 24 update (RENDERER-NOTES rev 8): R8 prefs persistence flipped
+to WIRED (DEVIATION:[prefs-wired]); R13 white-dot affordability REPLACES
+white-border (Lee §12.6-7); Company-list heading QUESTION CLOSED (§3 item
+2); D4 scoping complete, awaiting batch approval (§3 item 1).*
+
+*Session 25 update (RENDERER-NOTES rev 9, cleanup N2): D4 Batches A–D
+EXECUTED and Lee-verified (dialogs revs 4–7; renderer rev 24 coupling);
+rev index + dialogs index current; §7 records the code-header absorption
+map (trim deferred: dialogs → rev 8, renderer → rev 25); Batch G
+retargeted to renderer rev 25; queue: Batch E design discussion (incl.
+mode-radio fold-in ruling + §12.9 scaffold-touch question) is the next
+decision point; N3 archive appends PENDING (attach RENDERER-ARCHIVE.md).*

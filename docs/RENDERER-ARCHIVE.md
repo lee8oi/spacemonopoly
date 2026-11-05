@@ -1,132 +1,204 @@
-# RENDERER-ARCHIVE.md — Session 21 Close Append (revs 16 & 17)
+# RENDERER-ARCHIVE.md — Session 25 Append (revs 18–23; cleanup batch N3)
 
-**Instruction:** Paste the two entries below at the END of your on-disk
-`RENDERER-ARCHIVE.md` (after the rev-15 entry), keeping the append-log
-line at the very bottom. Per the archive's append-only policy, no
-existing text changes — this is a pure append. (In-conversation artifact
-`renderer-archive-append`; disk destination: end of RENDERER-ARCHIVE.md.)
-
----
-
-## rev 16 (FIX:[board-top-align] — reduced-window alignment; CSS-only)
-
-**Context:** rev 15 (FIX:[viewport-fit]) closed the full-size overflow
-defect but Lee's follow-up screenshot showed a residual: at reduced
-window widths the board sat noticeably lower than the side panel's top
-while the panel stayed pinned at the row top. (Process note: Lee's
-first report of the residual was initially misread in-conversation as
-the hint bar still being invisible — Lee corrected the record; the
-hint bar was fine, only the alignment was off.)
-
-**Root cause:** the board region centered the canvas vertically
-(`align-items: center`), while the side panel anchors to the row top.
-The asymmetry was invisible in the height-bound regime (full-width
-windows: the 4:3 fit consumes the region's whole height, zero leftover,
-because the side panel's fixed ~300px width plus menubar make the board
-column tall relative to its width). At reduced widths the fit flips to
-WIDTH-BOUND: the board scales to the narrowed column and leaves leftover
-vertical space, which centering split above and below — floating the
-board down relative to the panel. The defect was predictable at rev-14
-design time and wasn't reasoned through; this produced the
-**responsive-design review rule** now in the spine §4 (any layout change
-must be reasoned through BOTH fit regimes at design time).
-
-**Fix:** board region `align-items: center` → `flex-start` (horizontal
-centering via `justify-content: center` retained). The board's top edge
-now sits flush with the side panel's top at every window size. Trade-off
-accepted: on narrow-but-tall windows the leftover collects BELOW the
-board (between board and hint bar) instead of being split — least
-obtrusive placement, and the original app anchors its board at the
-top-left of the client area, so top-flushness is the faithful direction.
-Bottom-flushness with the panel is a non-goal (panel internals were
-mid-recomposition toward the Batch-2 fixed hierarchy anyway).
-
-**Scope:** CSS-only; one property. No drawing, mouse, timer, or
-turn-flow changes. **Verified by Lee** ("looks good enough for now") —
-Batch 1 CLOSED at rev 16.
+**Instruction:** Paste everything from the `---` separator below to the end
+of this artifact at the END of your on-disk `RENDERER-ARCHIVE.md` (after the
+existing rev-17 entry), replacing the old APPEND LOG block with the new one
+at the very bottom. Per the archive's append-only policy, NO existing text
+above the log changes — this is a pure append. (In-conversation artifact
+`renderer-archive-append-n3`; disk destination: end of RENDERER-ARCHIVE.md.)
 
 ---
 
-## rev 17 (Session 21 Batch 2 — side panel recomposition; B6+B7+B8+B10)
+## rev 18 (Session 22 Batch 3, first issue — menubar B2+A4) **DEFECTIVE**
 
-**Scope:** renderer-only, presentation-only. Scaffold and dialogs.ts
-untouched. Implements the Session-20 inventory's locked Batch 2 with
-two rounds of Lee design-time amendments (see below).
+**Status:** never verified; superseded in-session by rev 19. Issued for the
+record only — the defect narrative is the durable value.
 
-**Composition (B6, original hierarchy restored):** side panel
-top-to-bottom = (1) current-player box → (2) company list → (3)
-Players box (names-only) → (4) teal turn box → (5) Finish Turn.
-Replaces the rev-13 order (Players → Current Player duplicate →
-Companies → button); absorbs the B11 wonkiness ledger (duplication,
-premature Game Over button, checkbox-look rows).
+**Intent (design layer — CORRECT, later realized at rev 19):** menubar →
+three dropdown menus (Project / Options / Help) per B2; grid size demoted
+from the sm-menubar `<select>` to an Options → Grid Size cascade flyout with
+A4's literal asterisk captions (`16*12 (80 turns)` etc.); R9 superseded.
+The design mapping was never at fault — every defect below is
+implementation-layer.
 
-**Design-time amendment episode (for the record):** at design Lee first
-ruled the Players box REMOVED entirely ("only show current player"),
-which was recorded as DEVIATION:[players-box-removed]; Lee then
-corrected himself before any code shipped — the box was reinstated
-per the original design and the removal deviation never existed in
-any artifact. Final spec has the box. Lesson codified as the
-inventory-amendment recording convention (spine §4): design-time
-overrides are logged as named deviations in the notes; the inventory
-file stays closed; nothing ships before Lee's final ruling.
+**Defects (three, reported by Lee at load — all caught before design
+conclusions were drawn from them):**
 
-**Item-by-item:**
-- **B8b top box**: "£0" pre-game (orig initial-screenshot state); in
-  play = current player's name over balance, driven by
-  moneyShow/mainUpdate. Single-click on the box opens the CURRENT
-  player's details (Lee ruling; the orig has no box equivalent).
-- **A5 FIDELITY (restored)**: Players box is NAMES-ONLY (orig layout;
-  R10's name+money enhancement retired — R10 status flipped to RETIRED).
-  Plain rows, no current-player highlight ("copy the original design");
-  orientation lives in the top box.
-- **DEVIATION:[singleclick-details]**: player details open on
-  SINGLE-click of a players-list row (orig = ListBox1DblClick). Supersedes
-  rev-2's FIDELITY:[itemindex] dblclick flavor. Details access preserved
-  for ALL players. The current-player box is also single-click.
-- **B8 FIDELITY**: large teal box showing ONLY the current turn number.
-  Faithful-bright teal (#008080 anchor, approximated) + dark numerals;
-  Lee ruled faithful-bright with theming revisitable later. Blank
-  pre-game. Max-turns context AND the "(Tournament)" tag displaced to
-  the R12 hint bar (updateHint now prefixes "Turn X of N — ").
-- **B7**: in-game button label "Finish Turn" (was Continue); "Place a
-  piece…" sels-state text kept (port addition; orig just disables).
-  Post-game "Game Over" disabled state and all rev-4/10 gating logic
-  untouched.
-- **B10**: plain clickable company rows, swatch + name, thin separators,
-  dark-adapted. **"Companies" heading DROPPED — QUESTION, open:** the
-  original screenshot shows the list starting immediately with the
-  first button (no heading in crop), but the dfm fragment evidences
-  Label5 (purple/bold/underlined Times New Roman) somewhere on the
-  panel — text/position unreadable. Reinstate with extracted caption if
-  wider evidence lands (carried as open item in spine §3).
-  **Order verified by genuine vision pass** (Session-20 process lesson
-  upheld): screenshot shows Atlantis → Betelguese → Cannon → Debenese →
-  Eridnus = port COMPANY_DEFS order exactly; dfm DECLARATION order
-  (Eridnus first) is Z-order, not visual position — screenshot is
-  ground truth. Swatch = small solid company-color square-ish shape;
-  exact shape held for D3 (dfm round-rect TShapes). VCL dotted focus
-  rect on one row = keyboard-focus artifact, not ported. No white dots
-  in capture (consistent with D3 deferral).
-- **Betelguese spelling (open item #5, closed):** port "Betelguese" =
-  orig "&Betelguese" — QUIRK-FIDELITY confirmed already-faithful via
-  Lee's pasted COMPANY_DEFS. No change.
+1. **Responsive chrome stylesheet LOST.** The reissue carried the new menu
+   rules but dropped the rev-14/15/16 stylesheet. The ResizeObserver + CSS
+   fit model lost its height constraints: ResizeObserver entered a sizing
+   feedback loop (runaway board expansion) and the side panel was pushed
+   out of the viewport. Root class: a reissue that claims to carry prior
+   content forward was composed WITHOUT re-checking the carried sections
+   against source. Codified as the **preservation-verification rule**
+   (spine §4, Session-22 lesson).
+2. **Permanent full-viewport transparent overlay appended at construction.**
+   Intended as a click-away/underlay for open menus only; implemented as
+   always-resident → every click on the page hit the overlay; menus and
+   board input inert. The intended rev-19 shape (created on open, REMOVED
+   on close) is the correction template.
+3. **Menu gating via querySelectorAll DOM scraping + offsetLeft/offsetTop
+   positioning.** mainUpdate re-queried the DOM for menu rows instead of
+   holding references (fragile against rebuilds and invisible panels);
+   dropdown panels were positioned with offsetLeft/offsetTop accumulated
+   against unpositioned ancestors — wrong coordinates under the flex
+   column-root layout and at wrapped menubar sizes.
 
-**Cosmetic aside flagged in-delivery:** the TURNBOX_* constants are
-declared for documentation; the turn-box CSS uses the literal hex
-inline (consistent with the board palette arrangement). Inert unless
-a noUnusedLocals-style gate complains.
+**Process lessons banked:** (a) preservation-verification rule; (b)
+pre-transmission self-review (also spine §4); (c) the build gate does NOT
+catch this defect class — rev 18 was type-correct and built green; only
+on-disk behavioral verification by Lee caught it.
 
-**Implementation notes:** buildChrome builds the new panel in order;
-rebuildPlayerList emits names-only rows with click listeners;
-moneyShow guards the pre-game "£0"; mainUpdate drives turnBox,
-playerLabel, Finish-Turn label/gating; menubar untouched (Batch 3).
+---
 
-**Verified by Lee — 7/7 checklist:** panel order; top box £0→name+
-£6,000; single-click top box details; single-click row details
-(all players); teal box number-only incrementing; hint-bar turn
-prefix; Finish Turn/Game Over states; plus regression sweep of the
-§6 baseline (end-game flow, trade dialogs, affordability swatches).
-**Batch 2 CLOSED at rev 17.**
+## rev 19 (Session 22 Batch 3 CORRECTION — menus rebuilt on a sound footing)
+
+**Supersedes rev 18 wholesale.** Layout of the menu system, in the form now
+live on disk through renderer rev 24:
+
+- Menubar content = three top-level buttons (mkTop: Project / Options /
+  Help), each toggling its panel; hover-switches when another menu is open
+  (Windows behavior; DEVIATION:[menu-interaction]).
+- Leaf items built by a factory (mkItem) that stores a reference in
+  `menuItems[key]`; mainUpdate toggles `.sm-disabled` on held references
+  directly — no DOM scraping anywhere. MenuUpdate polarity unchanged from
+  the rev-17 flat-button version (Session-19c-verified) — 5 gated items +
+  End Game inverted; High Scores / About / Quit ungated.
+- Panels: `position: fixed`, `display: none` by CSS default; geometry
+  computed at OPEN time from `getBoundingClientRect` (viewport coords —
+  immune to ancestor stacking and flex/wrap layout). openMenu clamps
+  against the right viewport edge; openFlyout cascades right with EDGE
+  FLIP (mirror leftward if the flyout would overflow; measured while
+  hidden so the flip is exact — works in width-bound AND ≤720px regimes,
+  one code path).
+- Grid Size cascade: hovering (or clicking) the row opens the flyout;
+  hovering any non-Grid row closes it. Bullet marker (•) in the row
+  gutter tracks the current grid type, refreshed in mainUpdate.
+- Underlay: created on open, REMOVED on close (rev-18 defect 2 dead);
+  Esc and click-away close all menus.
+- Styling: DEVIATION:[menu-styling] — dark-app adaptation of Win2k native
+  menu chrome (light panel, dark items, clHighlight hover).
+- **Rev-17 stylesheet restored VERBATIM**, menu CSS purely APPENDED after
+  the preserve marker. (Restoration re-checked against the rev-17 source
+  at composition — the preservation-verification rule applied on its
+  birth session.)
+- A4 captions: literal asterisks preserved; actual-geometry knowledge
+  (GRID_CONFIGS dims) remains trivia only (R9 superseded-by-revision).
+
+**Pre-transmission corrections (folded under the same rev number, never
+on disk):** first rev-19 draft had panels visible at boot (missing display
+default), an undeclared `gridFlyoutPanel` field, and a missing Esc
+handler — caught on self-review before any disk write. Sets the spine §4
+exception: defects caught pre-write fold into the pending reissue.
+
+**Verified by Lee** ("everything appears functional. Resized window looks
+good.") — **Batch 3 CLOSED at rev 19.**
+
+---
+
+## rev 20 (Session 23 — board-entity art v1 + sels correction)
+
+**Mission:** replace the abstract tile glyphs (filled squares/simple
+shapes) with orig-faithful ENTITY ART, drawn as code-drawn vector
+primitives at the single seam `drawCellEntity()` (contract: base tile
+units under the canvas transform). Decision (Lee ruling, Session 23):
+authored vectors over extracted .res bitmaps — screenshots supplied
+sufficient reference; dark-theme adaptation argued for authored palettes.
+This CLOSED the tile-art extraction seam's scope (spine §3-8; the seam
+remains the swap point if extraction is ever wanted later).
+
+- **Cross tokens** (COMPANY_CELL_BASE+): company-color arms, thick dark
+  outline tracing all edges, DEVIATION:[company-initial] (white letter
+  A–E on the center), DEVIATION:[token-flat-shading] (no bevels/shadows).
+- **Circle**: faithful blue — flat medium-blue fill + thick dark-blue
+  outline (orig ImageList tile), brightened for the dark board:
+  `#4f83e8` fill / `#16204a` stroke.
+- **Diamond**: vivid yellow rotated square, flat fill, thin black outline.
+- **drawSels correction** (folded in, Lee ruling): normal selection =
+  solid royal-blue fill + THICK WHITE border; active (timer-cycled) =
+  solid blue + thick lime-green border. Retires the translucent-blue/
+  thin-black normal and clYellow-stroke active of the pre-20 era.
+  Constants: SEL_FILL #0000ff, SEL_BORDER_NORMAL #ffffff,
+  SEL_BORDER_ACTIVE/ACTIVE_STROKE #32cd32.
+
+**Erratum (process-relevant, recorded):** the issued artifact carried one
+transcription typo — `'2D'` instead of `'2d'` at the getContext call —
+caught by the BUILD GATE, hand-fixed on disk. Load-bearing because the
+self-review had CERTIFIED the line byte-identical from composition-side
+memory. Addendum codified (spine §4): certifications must come from
+re-reading the ISSUED artifact text, never from composing-side memory;
+build gate + Lee's on-disk diff are the authoritative checks.
+
+**Outcome:** loaded and exercised by Lee; tuning feedback followed →
+superseded by revs 21–23.
+
+---
+
+## rev 21 (Session 23b — tuning pass 1)
+
+Lee live-feedback-driven (arms stubby, center small, diamond "O"-glyph):
+
+1. **Diamond highlight ellipse REMOVED** — the pseudo-3D ellipse read as
+   a spurious "O"/"0" glyph at playable cell sizes. Diamond now flat fill
+   + outline only.
+2. **Cross geometry rebuilt, span-derived:** span 92% of min cell dim,
+   center 50%, arm width 33% — geometry derived from span/center so arm
+   lengths are computed (`armLen = halfSpan − halfCs`), not hand-tuned.
+3. **Letter readability:** stroked-outline halo (lineJoin round,
+   miterLimit 2), bold 40%-of-cell font.
+
+Superseded by rev 22 (Lee: arms still stubby; center small).
+
+---
+
+## rev 22 (Session 23c — tuning pass 2)
+
+Vertical (top/bottom) arms extended to the CELL EDGES — full tile height
+— on the reasoning that the rev-14-era tiles were taller than wide
+(pre-square-cells), so edge-reaching vertical arms restored the orig
+cross's full-bleed look; horizontal arms kept the 92% span. Center square
+50% → 58%.
+
+**On-disk divergence (spine §4 rev-numbering extension precedent):** Lee
+HAND-TUNED the disk copy beyond the issued artifact — `centerSize` 58% →
+0.70, cross `lineWidth` → 2 — then applied a chat-issued
+symmetric-geometry patch. On-disk contents no longer matched the issued
+rev → restamped **rev 23** (rev numbers keep uniquely identifying on-disk
+contents even across hand-tune sessions).
+
+---
+
+## rev 23 (Session 23 close — ON-DISK final form; never re-issued as an artifact until renderer rev 24)
+
+The Session-23 endgame, in four acts (all recorded from spine + rev-24
+header reconciliation):
+
+1. **Scaffold amendment enables symmetry:** the logged frozen-file
+   amendment DEVIATION:[square-cells] (GRID_CONFIGS tileH := tileW;
+   SCAFFOLD-NOTES amendment line owed by Lee — renderer-side record at
+   spine §6) made cells SQUARE. The asymmetric rev-22 geometry (vertical
+   full-bleed, horizontal 92%) lost its premise.
+2. **Symmetric cross:** all four arms identical geometry — `halfSpan =
+   0.46m`, `armLen = halfSpan − halfCs` — same span fraction on both
+   axes; no full-bleed. Center square at Lee's tuned `0.70m`; cross
+   `lineWidth 2`.
+3. **Hand-patch casualty + restoration:** the company-initial letter
+   block was accidentally dropped during the symmetric-geometry edit;
+   caught and re-added verbatim per chat instructions. (Second
+   hand-edit-cycle lesson: verify the FULL entity block after a manual
+   patch, not just the edited lines.)
+4. **drawSels lineWidth → 3** (Lee tune — borders of the blue sels
+   squares).
+
+**Verified by Lee — "Now the game looks great." Session-23 mission
+CLOSED.**
+
+**Post-close note:** rev 23 existed ONLY on disk (hand-tuned, never an
+issued artifact) until Session 25 — renderer.ts rev 24's header wrote
+the interim state down, and THIS archive entry is now its full record.
+Session-25 observation: the rev-22 "edge-reaching vertical arms"
+reasoning was itself invalidated by square-cells — archived as-is; the
+final geometry is the rev-23 symmetric form.
 
 ---
 
@@ -137,3 +209,10 @@ prefix; Finish Turn/Game Over states; plus regression sweep of the
   panel) appended. Spine pending-detail blocks for both compressed to
   index lines post-verification — this file is now the sole full record
   for revs 16–17.
+- Session 25 (cleanup batch N3): revs 18 (defective, process-record) +
+  19 (menu correction) + 20 + 21 + 22 + 23 (entity-art chain, incl. the
+  '2D' typo erratum, the rev-22 hand-tune/restamp episode, and the
+  rev-23 on-disk-final narrative) appended from the spine index rows +
+  session records. Spine §1 rows for 18–23 remain the compressed index;
+  this file is now the sole full record for revs 16–23. Archive-append
+  debt CLEARED.

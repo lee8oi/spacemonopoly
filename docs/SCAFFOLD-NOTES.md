@@ -1,7 +1,7 @@
 # SCAFFOLD-NOTES.md — Annotation Archive for scaffold.ts
 
 Companion to `scaffold.ts` (logic layer, frozen at Session 12, amended
-Sessions 13–14). This document holds the full rationale, history, and
+Sessions 13–14, 23). This document holds the full rationale, history, and
 analysis that the condensed scaffold's one-line tags (`FIX:` /
 `DEVIATION:` / `QUIRK-FIDELITY:`) point back to. Nothing here is
 required to compile or run the scaffold; everything here IS required to
@@ -52,6 +52,11 @@ this session: FIX:[cumulative-worth] re-confirmed at source (OverForm.cpp
 re-read), and concludeGame's tail / renderer doConclude composition
 verified faithful to orig EndGame1Click + BitBtn1Click (DIALOGS-NOTES
 §11).
+
+**STATUS (Session 23): SECOND SANCTIONED AMENDMENT APPLIED.** Logged
+frozen-file amendment DEVIATION:[square-cells] in GRID_CONFIGS — tileH
+:= tileW for all three grid sizes. Render-side record: RENDERER-NOTES
+rev 9 §6. Full details below in §3.
 
 ---
 
@@ -178,6 +183,21 @@ original's Game.cpp boot state only.
    scores-format deviation; magic-number and NUL-truncation behaviors
    would actively corrupt legitimate data, so bypassing them is a
    correctness fix, not just convenience.
+5. **[square-cells] (SESSION 23 AMENDMENT — LOGGED FROZEN-FILE CHANGE)**
+   Grid CONFIGS.tileH := tileW for all three sizes, making cells SQUARE.
+   **Origin:** original tiles are rectangular with ~1.22:1 board aspect
+   (Lee-confirmed via screenshots: 592×480 / 594×486 / 588×480 across
+   the three sizes). Lee ruled for square cells on appearance grounds.
+   **Changes:** SMALL tileH 40→37, LARGE tileH 20→21, MEDIUM already
+   27×27 unchanged. **Consequences:** board aspect is now grid-dependent
+   (~1.33 SMALL / ~1.22 MEDIUM / ~1.17 LARGE — SMALL wider, LARGE taller);
+   all renderer code (drawCellEntity, drawSels, fitBoard, mouse-mapping)
+   derives from tile dimensions and absorbed it with ZERO scaffold or
+   renderer changes. **Correction of historical record:** the
+   rev-14–16 "aspect-preserved (4:3)" code comments were WRONG — the
+   port board was always ~1.22:1 by scaffold design (and the original
+   likewise), never 4:3. **Render-side record:** RENDERER-NOTES rev 9
+   §6.
 
 ## 4. Preserved Quirks (QUIRK-FIDELITY tags, in full)
 
@@ -366,7 +386,7 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   regressions vs the live path: (1) `atoi` into `__int64` — atoi returns
   C int, silently truncating large/garbage input (ComInfoForm upgraded
   to `large(text)`); (2) BitBtn3 max-buy uses the stale global `maxbuy`
-  WITHOUT recomcomputing (ComInfoForm's BitBtn8 calls Info() first — our
+  WITHOUT recomputing (ComInfoForm's BitBtn8 calls Info() first — our
   port recomputes). Handlers re-enable ComInfo and call Info() after
   trading — orchestration only. No `Stock->Show()` located in any file
   read; evidence indicates unreachable dead code from an earlier design
@@ -384,8 +404,11 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   new original sources surface.
 - Currency symbol raw byte — default assumed £ (\u00A3, Windows-1252
   mojibake in source); verify before ship.
-- Prefs persistence decision — (a) faithful-dead (current, R8), (b)
-  wired on startup (DEVIATION), or (c) drop. Loader provided.
+- ~~Preferences persistence decision~~ RESOLVED (Session 24, Batch E
+  design discussion pending): option (b) wired on startup selected
+  (DEVIATION:[prefs-wired], supersedes R8 faithful-dead). Implementation
+  considerations in DIALOGS-NOTES rev 8 §12.9 (scaffold `loadPreferences()`
+  activation question — frozen-file amendment territory).
 - ~~Trading gate (sels)~~ RESOLVED: UI-level enforcement inside the
   trade dialog (orig InfoButs), confirmed ComInfoForm.cpp.
 - OPTIONAL: `grep "Stock->"` across .cpp files (low priority).
@@ -469,12 +492,35 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
   RENDERER-NOTES.md (renderer phase) and DIALOGS-NOTES.md (Sessions
   18–19); this archive intentionally records only scaffold-relevant
   events.
+- **Session 23 (board-entity art; second scaffold amendment)**: renderer
+  revs 20–23 (entity-art chain v1→v4, Lee-verified "Now the game looks
+  great."). **Second sanctioned scaffold amendment**: DEVIATION:[square-cells]
+  in GRID_CONFIGS — tileH := tileW for all three sizes (SMALL 40→37,
+  LARGE 20→21, MEDIUM already 27×27 unchanged). Origin: original tiles
+  are rectangular with ~1.22:1 board aspect (Lee screenshots); Lee
+  ruled square cells on appearance grounds. Consequences: board aspect
+  now grid-dependent (~1.33/~1.22/~1.17); renderer code absorbed it with
+  ZERO changes. Render-side record: RENDERER-NOTES rev 9 §6. Correction
+  of historical record: rev-14–16 "aspect-preserved (4:3)" code comments
+  were WRONG — port was always ~1.22:1, never 4:3.
+- **Session 24 (D4 scoping; prefs-wiring decision)**: dialogs.ts Batches
+  A–C issued and Lee-verified (revs 4–6); Batch D scoped; R8 prefs
+  persistence flipped to WIRED (option b); R13 white-dot affordability
+  REPLACES white-border (Lee §12.6-7); company-list heading QUESTION
+  CLOSED. Full record: DIALOGS-NOTES rev 7 §12.
+- **Session 25 (Batch D execution + cleanup)**: Batch D executed and
+  Lee-verified (dialogs rev 7 + renderer rev 24 coupling; grid-choice
+  ownership ruling); cleanup batches N1/N2/N3 completed (spine/archive
+  absorption pass). Mode-radio fold-in ruling pending; Batch E design
+  discussion (§12.9 prefs-wiring) next.
 
 ## 10. Verify-before-renderer checklist
 
 - [ ] Currency symbol raw byte (assume £, verify)
 - [ ] SMMain.dfm captions (menu labels 16by16 etc. — display quirk #6)
-- [ ] Preferences persistence option selected (a/b/c)
+- [x] ~~Preferences persistence option~~ **RESOLVED (Session 24)**: option
+      (b) wired on startup selected (DEVIATION:[prefs-wired], §12.9);
+      implementation discussion before Batch E code.
 - [x] ~~tsconfig target resolution~~ (Session 19: bumped to es2022,
       gate green — §8; header claim now true, scaffold untouched)
 - [x] Trading gate enforcement point decided (UI-level, InfoButs)
@@ -484,3 +530,4 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
       observed spec implemented, 5/5 playtest)
 - [x] Type-check baseline established (Session 19: tsc clean over all
       three files; gate negative-tested — DIALOGS-NOTES §8.4)
+----- END FILE CONTENTS -----

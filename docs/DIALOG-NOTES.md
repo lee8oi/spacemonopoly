@@ -1,134 +1,253 @@
-# DIALOGS-NOTES.md — Sessions 18–19 Record + Session 24 D4 Scope (rev 7)
+# DIALOGS-NOTES.md — rev 11
+# SPACE MONOPOLY PORT — DIALOGS SPINE (authoritative record)
+# Sessions 14–27 · dialogs.ts / dialogs-core / dialogs-events / dialogs-game /
+# dialogs-meta + companion renderer/scaffold records where coupled.
+#
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │ ERRATUM (rev 11 issuance): rev 10 of this spine (Session-27 rulings   │
+# │ reissue: §15.1–15.7) was issued in-chat but its full text was lost to │
+# │ conversation compaction before this reissue; only §-summaries         │
+# │ survive. Rev 11 RECONSTRUCTS those rulings at their issued § numbers │
+# │ (§15.1–15.6 substantively identical to rev 10 as issued; §15.7 queue │
+# │ refreshed). Where a reconstruction could not be verified verbatim,   │
+# │ it is marked "(rec)". This erratum is binding: future sessions must  │
+# │ not treat rev-10 phrasing as recoverable.                            │
+# └──────────────────────────────────────────────────────────────────────┘
 
-**Artifacts:** `dialogs-ts` (code, rev 3 on disk; next reissue = rev 4); `dialogs-notes` (this document)
-**Rev:** 7 — Sessions 18 (closed) + 19a build gate (closed, §8) + 19b cosmetics (closed, §10) + 19c item-#2 verification (closed, §11) + Session 24 D4 scoping + **micro-decision resolutions (§12.6 — ALL RESOLVED, this revision)**
-**Sessions:** 18, 19, 24 (open)
-**Files affected:** 24: none yet (scoping only). Planned: `dialogs.ts` (revs 4+), `renderer.ts` (rev 24, Batch G).
+## FOOTER / CURRENT STATE (Session 27 close)
 
-*(Filename note: pasted as `DIALOG-NOTES.md`; canonical name in the bootstrap is `DIALOGS-NOTES.md`.)*
-
----
-
-## 1–11. Sessions 18–19 record
-
-(Carried forward verbatim from rev 5 — unchanged. Contents: §1 Players.cpp/.dfm source verification; §2 design decisions (reorder, selection model, remove-while-selected); §3 issuance history incl. transcription-drift incident; §4 tag ledger; §5 Session-18 regression report — CLOSED (`netWorth`→`netWealth`); §6 verification status — ALL CLOSED; §7 out-of-scope observations; §8 Session 19a build gate (`tsc` apt-native not npx; `./build.sh` = tsc && esbuild; sabotage-tested fail→held→fix→pass; tsconfig target es2020 + dom lib); §9 open items; §10 Session 19b cosmetic backlog (caption "Player Information", MaxLength 15, Go! empty-list disable, DEVIATION:[prefill-single]); §11 Session 19c doConclude re-entry — verified no defect, menu-state-is-the-guard, MenuUpdate polarity 5/5 + 3 ungated.)
-
----
-
-## 12. SESSION 24 — D4 DIALOGS SCOPE (scoping; no code yet)
-
-### 12.1 Objective & evidence base
-
-Presentation fidelity pass over the remaining dialog forms. All forms already work
-functionally (revs 5–12 machinery: modal queue, eager capture, gating); this is look-
-and-wording fidelity only. Evidence: **13 Lee-held original screenshots** submitted this
-session in two bursts (5 + 8; first burst's images 6–13 failed delivery, resent in second
-burst — all 13 confirmed received and analyzed).
-
-### 12.2 Evidence inventory (verbatim strong layer; vision styling layer discarded)
-
-| # | Form | Orig evidence (verbatim text where load-bearing) |
+| Artifact | Rev on disk | Status |
 |---|---|---|
-| 1 | Merger dialog | Headline "Merger!"; body: "There has been a merger between A and B" / "The new company will take the name of A" / "The cost of A shares will be £N"; table: Player / Shares in A / Shares in B / **"Money Earnt"** (orig misspelling); OK button. |
-| 2 | Split dialog | Caption "Split"; headline "Shares Split Two For One!"; body: "Shares in A have split two for one. The previous share price of £X has been changed to £Y"; table: Player / Shares Before Split / Shares After Split; OK. |
-| 3 | New company dialog | Headline "A new company has been formed"; then "The new company's name is A." / "The shares will start at £N each." / "P will get five free shares in the company and £N"; OK. |
-| 4/12 | Game over dialog | Headline "Game Over!"; intro "At go number 38 the game is finally over. Below lists the game's final standings .."; summary block: Largest company / Size of company / Winning Player / Net Wealth of player; table: Player / Money Left / Worth of shares / Net Wealth; OK. (Two independent screenshots agree — corroborated.) |
-| 5 | Buy/sell (trade) dialog | Separate window (caption ≈ "Space Monopoly Services"); **company-colored header band** with company name + ‹ Previous / Next › flippers in the band; detail lines: "Company Size: 2 squares" / "Cost of Shares: £200" / "Major Shareholder: Lee with 5 shares."; group 1 header "You own N shares in this company" + [Sell All] [Sell >>>] [qty] Shares; group 2 header "You can buy up to N shares in this company" + [Max Buy] [Buy >>>] [qty] Shares; Finished button. |
-| 6 | Player info — Players tab | Tabs: Players / Game Type. Players: list + Move Up / Move Down (right column) + Remove + "Name:" field + Add; bottom buttons (vision read "Quit"/"Cancel" — Quit likely misread of Go!, unconfirmed). |
-| 7 | Player info — Game Type tab | "Select a mode:"; radios: Classic Game / Tournament; buttons Go! / Cancel. |
-| 8 | Preferences — General tab | Tabs: General / Game. "Currency Settings" group: Currency Unit **dropdown** (shows £); radios Prefix / Postfix; bottom: Save / Okay / Cancel. |
-| 9 | Preferences — Game tab | Group box: orig heading reads "Multiplayer Options" (Lee-confirmed from disk shot); subtext "(Recommended for multiplayer games, but can be used for single player games)"; checkboxes: Force Mergers / Force Expansion / (indented, boxed) Allow Company Creation / Hide Player details; bottom: Save / Okay / Cancel. |
-| 10 | Company list (right panel) | Five rows: colored dot + name (Atlantis Ltd. / Betelgeuse / Cannon Inc. / Debenese / Eridnus Corp.), thin separators, selection highlight on one row. **Lee ruling: NO header exists above the list in the orig right panel — Label5 question CLOSED.** |
-| 11 | High scores dialog | Three size selectors "16 by 12" / "22 by 18" / "32 by 24"; table with header row: Position / Name / Net Wealth; top entry tinted; Okay button. |
-| 13 | Player details dialog | Caption "Player Details"; content: "Details of Lee" — Money in the Bank: £6,000 / Net worth of Shares: £0 / Total Wealth: £6,000; then "Share Details:" table: Company Name / Number of Shares / Worth of Shares; Okay button. |
+| dialogs-core.ts | 2 | split module, chat-patches folded |
+| dialogs-events.ts | 1 | split module, verbatim carry |
+| dialogs-game.ts | 6 | Batch F layout + tabs dropped (rev 5) + header slimmed (rev 6) |
+| dialogs-meta.ts | 1 | split module, verbatim carry |
+| dialogs.ts | 9 | barrel — wildcard re-exports of the four modules |
+| renderer.ts | 24 | untouched by split (barrel preserved import path); Batch G pending → rev 25 |
+| scaffold.ts | — | frozen (+2 amendments) |
 
-**Evidence rulings made at scoping:**
-- Vision-read styling details (fonts, hex guesses, "wine glass icons", green checkmarks in buttons) are DISCARDED as evidence. Text + structure only.
-- "Filter buttons, no tabs" read on high scores is OVERRULED by the Phase-3 source ledger (HighScores.h: 3-tab PageControl) and the rev-12 port — the size labels are tab captions.
-- **White dot (company list): Lee confirmed** — the white dot signifies the current player can afford to buy at least one share in that company. (Renderer-side affordance; Batch G.)
+Build: green, ~77 kb bundle, game functional (Lee-verified).
+Boot expectations: §1 baseline renders identically pre/post-split.
 
-### 12.3 Lee's scoping rulings (Session 24, binding)
-
-1. **Wording policy:** formalize wording/spelling for better accuracy — orig misspellings and clumsy phrasing are corrected, not slavishly preserved. E.g. "Money Earnt" → "Money Earned"; "At go number 38" → "At turn 38" (port vocabulary; confirmed §12.6-1); trailing ".." → proper ellipsis.
-2. **Theme:** dark theme retained for all dialog chrome (DEVIATION:[menu-styling] family continuity). Broader themes discussion deferred to a future session (interacts with the deferred D1 light-theme pass).
-3. **Port additions:** follow Lumo's recommendations —
-   - DROP: merger "Combined value" sum line (redundant once orig's "The cost of A shares will be £N" sentence lands); split share-price bullet line (superseded by orig's before/after sentence).
-   - KEEP: the behavioral-quirk hints (tournament doubling note, tournament no-conversion note, zombie-exclusion note, trading-lock note) as small-print supplements — tagged DEVIATION:[hint-supplement] going forward.
-   - KEEP: company-color banners/swatches on announcement modals as dark-theme color identity (DEVIATION:[color-banner] — orig announcement dialogs are plain).
-4. **White dot:** renderer-side affordability marker (≥1 share affordable). Batch G — white dot REPLACES the R13 white border (Lee §12.6-7), sized so the company color remains clearly visible.
-5. **New game + preferences structure:** stay SINGLE PAGE (Lee: extra tab redundant). Orig tab structure NOT adopted → tags DEVIATION:[single-page-newgame], DEVIATION:[single-page-prefs].
-
-### 12.4 Formalized wording targets (reference for code batches)
-
-**Founding (Batch A):** h3 "New Company!" (window-caption role); bold lead "A new company has been formed"; then, verbatim-formalized: "The new company's name is {name}." / "The shares will start at {price} each." / "{player} will get five free shares in the company and {price}." Button: OK.
-
-**Split (Batch A):** h3 "Shares Split Two For One!"; body: "Shares in {name} have split two for one. The previous share price of {old} has been changed to {new}."; table headers: Player / Shares Before Split / Shares After Split. Keep tournament/classic doubling hint. Button: OK.
-
-**Merger (Batch A):** h3 "Merger!"; color banners retained (struck-through absorbed / survivor); body: "There has been a merger between {A} and {B}." / "The new company will take the name of {A}." / "The cost of {A} shares will be {new price}."; table headers: Player / Shares in {A} / Shares in {B} / Money Earned (spelling formalized from orig "Earnt"); combined-value line REMOVED. Keep tournament no-conversion + takeover hints. Button: OK.
-
-**Game over (Batch B):** h3 "Game Over!"; intro: "At turn {N} the game is finally over. Below are the game's final standings…" (grammar fixed per §12.6-1/2); four-line summary block: "Largest company: {name}" / "Size of company: {n} squares" / "Winning Player: {name}" / "Net Wealth of player: {money}"; table headers: Player / Money Left / Worth of shares / Net Wealth. Button: OK (was "Close"). Winner-summary one-liner retired in favor of the summary block.
-
-**Player details (Batch B):** h3 "Player Details"; bold "Details of {name}"; summary rows first: "Money in the Bank" / "Net worth of Shares" / "Total Wealth"; then "Share Details:" label over table: Company Name / Number of Shares / Worth of Shares; zombie hint retained (DEVIATION:[hint-supplement]). Button: Okay (was "Dismiss").
-
-**High scores (Batch C):** tab captions FIXED to actual geometry (Lee §12.6-3: "Fix it") — derive caption strings FROM GRID_CONFIGS at runtime (e.g. `${cols} by ${rows}`) so captions can never drift from reality; DEVIATION:[scores-caption-fix] (orig overstated Large as "32 by 24"; actual Large is smaller — read exact dims from scaffold at code time, never from memory). Table gains header row: Position / Name / Net Wealth; new-entry bold+tint retained. Button: Okay (was "Close").
-
-**Trade / buy-sell (Batch F):** company-colored header band (name + ‹ Previous / Next › flippers, dark-adapted); detail captions: "Company Size: {n} squares" / "Cost of Shares: {price}" / "Major Shareholder: {name} with {n} shares." (fall back to "Nobody." when none); group 1: "You own {n} shares in this company" over [Sell All] [Sell >>>] [qty field] Shares; group 2: "You can buy up to {n} shares in this company" over [Max Buy] [Buy >>>] [qty field] Shares; two SEPARATE quantity fields (orig has one per group); button "Finished" (was "Close"). Trading-lock hint retained. ">>>" glyphs kept literal (orig caption content).
-
-**Preferences (Batch E):** single page with two group sections (DEVIATION:[single-page-prefs]): "Currency Settings" (unit input stays free-text per R11 validation deviation; Prefix/Postfix converted from select to radio pair) and the Game group: heading **"Gameplay Options"** (renamed from orig "Multiplayer Options" — Lee ruling §12.6-6: orig's own subtext admits single-player use, so the name is inaccurate; formalization, not fidelity break) + recommendation subtext verbatim; checkboxes relabeled: "Force Mergers" / "Force Expansion" / "Allow Company Creation" (indented, disabled unless expansion — already implemented) / "Hide Player Details". Buttons: Save / Okay / Cancel with §12.6-5 semantics. **Persistence WIRED (option b — supersedes R8 faithful-dead; see §12.9):** preferences saved on Save AND read at game launch so they apply to future sessions.
-
-**New game (Batch D):** single page (DEVIATION:[single-page-newgame]): players section unchanged mechanically (Move Up / Move Down right column, per-row −, "+ Add player", MaxLength 15, prefill-single); mode selector converted from dropdown to radio pair under heading "Select a mode:" with labels Classic Game / Tournament; **grid-size dropdown REMOVED** (Lee §12.6-4 — canonical grid choice is the Options → Grid Size flyout, rev 19; orig player form has no grid control; matches orig division of responsibilities). Buttons: Go! / Cancel.
-
-### 12.5 Batch plan (sequenced smallest → largest)
-
-| Batch | Scope | File / rev |
-|---|---|---|
-| A | Announcement text fidelity: founding, split, merger (wording, table captions, drops per §12.3) | dialogs.ts rev 4 |
-| B | Game over + player details rewording/reordering | dialogs.ts rev 5 |
-| C | High scores: runtime-derived tab captions, header row, Okay | dialogs.ts rev 6 |
-| D | New game: mode radios + "Select a mode:" + grid-dropdown removal (single page) | dialogs.ts rev 7 |
-| E | Preferences: group sections, "Gameplay Options", radio pair, third button + WIRED persistence | dialogs.ts rev 8 |
-| F | Trade dialog re-layout: color header band, captioned details, two-group buy/sell, Finished | dialogs.ts rev 9 |
-| G | Company list white-dot affordance (renderer side panel; RETIRES the R13 white-border signal; dot sized within the swatch so the company color stays clearly visible — Lee §12.6-7) | renderer.ts rev 24 |
-
-Delivery cadence: one full-file reissue per batch (clean audit trail), DIALOGS-NOTES reissued when design records change; Lee may group batches into a single reissue if he prefers fewer transcriptions. Chat-patch mode available for tuning loops (Session-23 precedent); hand-edits take new revs.
-
-### 12.6 Micro-decisions — RESOLVED (Lee, Session 24)
-
-1. **"go number" → "turn"** — YES, fix grammar; deviate from orig (wording-policy formalization).
-2. **Trailing ".."** — YES, fix (proper ellipsis/period).
-3. **High-scores tab captions** — FIX: corrected to actual geometry, derived from GRID_CONFIGS at runtime. Orig's overstated "32 by 24" is not carried.
-4. **New-game grid dropdown** — REMOVE (Lumo recommendation accepted; canonical entry point = Options → Grid Size flyout).
-5. **Preferences Okay/Save/Cancel semantics** — agreed: Okay = apply to live game + close (no persist); Save = apply + persist; Cancel = discard. EXTENSION (Lee): preferences must be READ at launch and apply to future game launches — persistence wired, superseding R8 faithful-dead (see §12.9).
-6. **Preferences Game-tab group heading** — orig reads "Multiplayer Options" (Lee-confirmed). Lee proposes and adopts **"Gameplay Options"** for accuracy (applies to single-player too).
-7. **Affordability signal** — white dot REPLACES the white border (border "not as noticeable"); dot must not fill the swatch box — company color remains clearly visible.
-8. **Company list heading (Label5)** — no header exists above the list in the orig right panel (Lee ruling). Rev-17 heading-drop is now source-confirmed and PERMANENT. Close RENDERER-NOTES §3 item 2 at next renderer-notes reissue.
-
-### 12.7 Verification expectations (per batch)
-
-- `./build.sh` green after each transcription (gate catches type drift; behavioral spot-checks remain mandatory).
-- Batch-specific live checks: A — trigger/provoke split, merger, founding (CLASSIC + solo Tournament where reachable); B — end game via both paths (menu + natural finish); C — standalone High Scores + end-of-game second modal (new-entry tint) + captions match actual grid dims on all three sizes; D — mode radio commit, reorder re-run, grid choice ONLY via Options menu; E — draft-commit flow, expansion→creation enable chain, SAVE→relaunch persistence round-trip (write then read at next launch, all pref fields); F — buy/sell/max/sell-all paths, prev/next cycling, sels lockout; G — white dot matches affordability at several cash levels, across all three grid aspects.
-- TOURNAMENT single-row tables spot-check rides along opportunistically (standing §9 item).
-
-### 12.8 Evidence provenance & caveats (for the record)
-
-- Screenshots submitted by Lee this session, held on Lee's disk (cleared from conversation slots after extraction; re-attach on request for re-examination).
-- All screenshot-derived styling claims are weak-evidence and were discarded; wording/structure claims quoted above are the design basis.
-- The five-shot first-burst images were cleared from the conversation at Lee's request after text extraction; the eight second-burst images remain available for re-examination.
-- Erratum from rev 6 of this document: the trade-dialog evidence line contained a doubled word ("can buy buy up to") introduced at composition; the correct extraction is "You can buy up to N shares in this company".
-
-### 12.9 Persistence wiring design note (Batch E — R8 supersession)
-
-Lee's §12.6-5 extension chooses option (b) from the long-standing verify-before-ship
-trivia item: preferences become **wired** (saved AND read at launch), superseding
-R8's "faithful-dead" settlement and the QUIRK-[prefs-half-wired] behavior
-(orig FormCreate reader is commented out — we now deliberately diverge:
-DEVIATION:[prefs-wired]).
-
-Implementation considerations to resolve at Batch E design time:
-- Scaffold reportedly contains a dormant `loadPreferences()` (per R8 note). Investigate whether activating it requires a scaffold hand-amendment (logged-amendment precedent, square-cells pattern) or whether renderer-side boot-time read of the `Preferences` localStorage key suffices. Prefer the path that leaves the frozen scaffold untouched if functionally equivalent.
-- Storage shape must match what the existing Save path already writes (key `Preferences`) — read exactly what is written; do not invent a parallel schema.
-- Which fields apply live vs. next-game (e.g. currency unit likely applies to display immediately; force/expansion/hide-details likely only at next `startGame`) — decide per field with Lee at Batch E.
-- RENDERER-NOTES R8 status line + §3 item 7 trivia entry must be updated at the next renderer-notes reissue to record the flip to (b).
+**Rev-numbering regime (since the split):** per-module, cite module+rev.
+Historical single-file revs (dialogs.ts rev 8 and earlier) retain their
+single-file numbering in this record. Distinct namespaces are intentional
+(§15.4-2): "dialogs-game.ts rev 6" never collides with spine revisions.
 
 ---
-*Session 24 status: SCOPED + MICRO-DECISIONS RESOLVED (§12.6). No code issued. Next: Batch A → dialogs.ts rev 4 (announcement modals: founding, split, merger — wording per §12.4).*
+
+## PART I — CARRIED HISTORY (Sessions 14–26)
+### (closed history; condensation of §1–11 pending per §15.5 — see erratum note in Part III)
+
+Unchanged from rev 9, except where explicitly superseded in Part II/III.
+Contents at a glance (§-numbers stable since rev 5): project frame and
+protocol (§1–7), dialogs record of Batches A–E (§13/§14), trade-dialog
+design basis (§12.1–12.7), errata registry (§14.5), queue (§14.6 —
+superseded by §15.7 below).
+
+### §12.4 TRADE DIALOG DESIGN BASIS (frozen design-basis; supersedes note)
+Frozen spec for the trade dialog rework (Batch F). The rev-2 execution is
+faithful to this spec EXCEPT as expressly overridden by the Session-27
+rulings in §15.1 and the deviation in §15.8 — most notably the tab strip,
+specified and executed, then REMOVED. Remaining live requirements:
+company-colored header band, centered name, in-band ‹ Previous / Next ›
+flippers; detail captions verbatim ("Company Size: {n} squares" /
+"Cost of Shares: {price}" / "Major Shareholder: {name} with {n} shares."
+with "Nobody." fallback); sell group "You own {n} shares in this company"
+over [Sell All] [Sell >>>] [qty] Shares; buy group "You can buy up to {n}
+shares in this company" over [Max Buy] [Buy >>>] [qty] Shares; two
+SEPARATE qty fields; "Finished" button plain-text; ">>>" glyphs literal;
+trading-lock hint + sels gating uniform.
+
+### §12.2-5 EVIDENCE ADDENDUM (Session-27 re-read, screenshot #5)
+Vision re-read of the original buy/sell dialog confirmed: tab strip is
+genuine original chrome (not a vision artifact), resolving both §6 ship-
+trivia items: (a) tab strip exists in the orig; (b) orig flipper glyphs
+were `<<` / `>>` double-chevrons (modernized in the port per ruling).
+Full pixel observations recorded in the Session-27 chat record; the two
+facts above are the durable outcomes.
+
+---
+
+## PART II — SESSION 27 RULINGS (reconstructed §15.1–15.6, issued rev 10)
+### (substantively identical as issued; "(rec)" marks unverifiable verbatim wording)
+
+**§15.1 Batch F design frozen.** Tab strip IN (ruling basis: "easy access
+directly to the respective company" — Lee, Session 27); flippers modernized
+to single guillemets; active-tab company-color echo w/ white text;
+"Finished" plain text (green-check glyph dropped); one-pass re-derive on
+company switch; trading-lock uniform. *(Superseded in part by §15.8 —
+tab strip subsequently REMOVED.)*
+
+**§15.2 Length-budget mitigations (binding).** (a) reuse existing CSS
+classes + inline style assignments, no dialogs-core CSS additions; (b) one
+consolidated FIDELITY block per region, not distributed commentary; (c)
+graft onto the existing tradeDialog skeleton, duplicate parseAmount per
+qty field; (d) header gains one rev paragraph per reissue.
+
+**§15.3 Comment-relocation policy (standing, Lee direction).** Spines own
+per-batch/per-rev narrative; code carries live contracts only. Applied
+piggyback at substantive reissues. Carve-out: live invariants (fidelity
+tags, gating semantics, type warnings such as the maxbuy-1n note) stay
+code-internal. Batch F precedent: trade-dialog commentary relocated at
+rev 2; modules' rev-1 comment bodies retained verbatim from dialogs.ts
+rev 8 pending their own substantive touches.
+
+**§15.4 Four-module file split (executed).** dialogs.ts rev 8 → dialogs-
+core / -events / -game / -meta + barrel (dialogs.ts rev 9, wildcard
+re-exports, renderer import path unchanged). Per-module rev numbering;
+structural deviation logged as DEVIATION:[dialogs-split]. Executed BEFORE
+Batch F (order swap vs original schedule) per the payload-ceiling incident
+below. Renderer.ts untouched by the split.
+
+**§15.5 Spine pruning (adopted, pending execution).** Closed-history §1–11
+may migrate to RENDERER-ARCHIVE at a future reissue, condensing the spine
+for read-budget headroom.
+
+**§15.6 Multi-paste read protocol (effective immediately).** When multiple
+files are pasted in one turn, Lee tags priority; one file drains fully
+across consecutive turns before the next is read. Prevents the two
+Session-27 read-limit incidents from recurring.
+
+---
+
+## PART III — SESSION 27 EXECUTION RECORD (rev 11 substance)
+
+### §16.1 Payload-ceiling incident & platform constant
+A full-file dialogs.ts rev 9 (~13K tokens) failed to attach correctly
+(registered under a rev-9 title with rev-8-equivalent content). Empirical
+platform ceiling: **single artifacts must stay < ~10K tokens; hard danger
+zone > ~12K**. Standing planning constant for all future full-file
+issuances. This incident triggered the §15.4 order swap (split first).
+
+### §16.2 Split execution record (DEVIATION:[dialogs-split])
+Executed as: dialogs-core/-events/-game/-meta rev 1 (verbatim carries,
+import blocks new) + dialogs.ts rev 9 barrel. Two chat-patches post-issuance:
+(1) dialogs-core `modal` missing export (TS2459 × 3 fan-out) — patch issued
+but initially failed to land on disk; caught by build, re-applied on second
+attempt; (2) dialogs-game missing `msgBox` import (TS2304). Both patches
+folded into subsequent reissues (core → rev 2 at Batch-G-adjacent reissue;
+game → rev 4 composition). Acceptance test passed: build green, zero
+visual change, §1 baseline identical.
+
+### §16.3 Batch F execution record
+**dialogs-game.ts rev 2** (composed against re-read rev 1): full trade
+re-layout per §12.4 + §15.1 — band, in-band flippers, tab strip, verbatim
+captions, two-group sell/buy with separate qty fields + per-field parsers,
+Finished, uniform sels gating, consolidated FIDELITY:[cominfoform] block.
+Pasted, built green, and Lee-verified live (single-company no-op behaviors
+— one tab / flippers no-op — correctly diagnosed as test-game state, not
+defects, per the tabs-list-existing-companies filter).
+
+**Post-rev-2 fixes (chat patches, folded at rev 4):**
+1. `view.maxbuy === 1` → `=== 1n` (BigInt/number comparison lint, TS2367
+   class; composition had pattern-matched the buy caption off the sell
+   caption's structure). Class of miss: type-checking the dependent field
+   against its declared type, not against its sibling's shape.
+2. Tab-strip containment thread — see §16.4 in full.
+
+**dialogs-game.ts rev 5 (final Batch F layout).** Tab strip REMOVED per
+Lee ruling — see §15.8. Fixed 480px box width reverted with it; content
+sizing under CSS max-width 520px restored.
+
+**dialogs-game.ts rev 6 (comment-only reissue, Lee-directed).** Header
+history relocated to this spine; code retains live contracts per §15.3
+carve-out. Sets precedent: directed comment-only trims are permitted
+outside the piggyback rule when explicitly instructed. No executable
+lines changed; verification = build + §1 baseline eyeball.
+
+### §16.4 Tab-strip containment thread (full debug ledger)
+Symptom: at five existing companies the strip overran the dialog's right
+border; successive fixes (maxWidth 100% + nowrap; fixed 480px box; full
+inline containment stack; tab-chrome compression + auto-center-active)
+each reported "still scrolling out of view". Instrumentation (computed-
+style probes, Lee-run) proved the strip WAS a functioning scroll
+container in the end (clientWidth 480 < scrollWidth 614; modal scrollWidth
+== clientWidth → no modal-level horizontal overflow; strip right edge 19px
+inside the border) — the residual complaint was a clipped 5th tab behind
+an invisible overlay scrollbar. Root cause of the ORIGINAL escape was
+never conclusively isolated: patch staleness across builds confounded
+every isolation attempt (screenshots described DOM from stale builds on
+at least two occasions; the exact mechanism the first maxWidth-100%
+attempt lost remains unknown). Two mechanistic theories (content-sized
+modal sizing cycle; vertical-scrollbar width theft) were proposed and
+both disproven by probe data.
+
+**Binding lessons (Session 27, recorded with teeth):**
+- **Probe-first rule:** computed-style/DOM probe on FIRST report of any
+  layout defect, before the first patch is composed. Two probe
+  transcripts in the chat record turned a five-patch failure thread into
+  a same-session resolution path.
+- **Usability over geometry:** an affordance that reads as broken to the
+  user is broken, regardless of what computed styles prove about
+  containment. Geometric correctness is not an acceptance criterion;
+  usability is.
+- **Verify patches landed, not just diagnosed:** the modal-export patch
+  and (probably) at least one strip patch failed to reach disk on first
+  application; screenshots of stale builds then fed the diagnosis loop.
+  Every chat patch now requires a build-and-report confirmation before
+  the next patch composes.
+
+### §15.8 DEVIATION:[tabs-dropped] (Lee ruling, Session 27, rev 5)
+The company-name tab strip — confirmed genuine original chrome (§12.2-5
+addendum), restored at rev 2 per the §15.1 "easy access" ruling — is
+REMOVED. Basis, in Lee's words and order: containment could not be made
+reliable; the deviation aligns with upcoming responsive-design work
+("Perhaps this will help us create a responsive design that scales well
+to mobile device screens"). Judgment recorded: the strip duplicated the
+flippers' navigation with a usability cost on constrained viewports.
+Navigation completeness preserved via in-band flippers (cycle skips
+zombies, wraps). The fixed 480px form width introduced during containment
+work was reverted simultaneously — a hard pixel width opposes responsive
+design. Active-tab color echo (§15.1-3) is retired with the strip.
+
+### §16.5 NEW DIRECTION OPENED: Responsive / mobile-friendly design
+Recorded as design intent (Lee, Session 27), not yet a batch: the port
+should scale well to mobile-device screens. Consequences already applied:
+content-sized dialogs, pixel-fixed widths deprecated in dialogs-game. The
+first responsive pass should survey ALL fixed pixel widths across
+renderer.ts, dialogs-core CSS, and scaffold-derived layout constants
+before scoping a batch. Candidate queue placement: alongside or after
+Batch G (renderer rev 25).
+
+### §16.6 Batch F verification (close criteria)
+§15.1-7 list ran against rev 5 state (tabs checks voided by §15.8):
+buy/sell/max/sell-all via each group's own field incl. invalid-input and
+over-quantity branches; flipper cycling skips zombies + wraps + recolors
+band + re-derives panel in one pass; qty fields independent + clear on
+switch; sels lockout disables the four trading buttons w/ hint, flippers
+stay live; Finished closes. PASSES reported by Lee on the rev-5 build
+("That works for now"). Batch F CLOSED at dialogs-game.ts rev 5;
+rev 6 is comment-only polish. Residual known-issue status: none open
+against the trade dialog.
+
+---
+
+## PART IV — QUEUE (supersedes §14.6 / §15.7)
+
+1. **Session-close bootstrap regeneration** (obligation carried from
+   §15.7-7): regenerate FRESH_BOOTSTRAP.md from THIS rev-11 spine at
+   Session 27 close. The bootstrap's disk-state table must reflect:
+   four dialogs modules + barrel, renderer 24, scaffold frozen, Batch F
+   CLOSED at dialogs-game rev 5 (layout) / rev 6 (comments), Batch G next.
+2. **Batch G** — renderer.ts rev 25 (triple scope): white-dot swatches,
+   header trim, loadPreferences() boot call. Compose against re-read
+   renderer.ts rev 24 (needs full rev-24 paste in the next session).
+3. **Responsive-design pass** (§16.5): survey of fixed pixel widths
+   across renderer.ts, dialogs-core CSS, and layout constants; scope to
+   a batch proposal. Queue placement Lee's call.
+4. **Spine pruning** (§15.5, adopted): migrate Part-I closed history to
+   RENDERER-ARCHIVE at the next spine reissue; spine targets ≤ 2 read-pages.
+5. **dialogs-core rev 2 reissue**: fold the `modal` export patch into a
+   header-noted reissue at next substantive touch (pairs naturally with
+   the responsive CSS survey, item 3).
+6. **Renderer-notes interlock**: RENDERER-NOTES rev 9 reissue owed
+   (Session-27 coupling: split acceptance + Batch G spec updates);
+   schedule with Batch G.
+
+---
+
+*Footer: rev 11 issued at Session 27 close (Batch F closed, tabs-dropped
+deviation recorded, payload-ceiling constant set, probe-first rule
+binding). Next spine rev: 12 (post-Batch-G record + pruning execution,
+per queue). Bootstrap must regenerate from this rev at session close.*
