@@ -531,3 +531,11 @@ UB and cannot be selectively content-aware; Game.cpp (read Sessions
 - [x] Type-check baseline established (Session 19: tsc clean over all
       three files; gate negative-tested — DIALOGS-NOTES §8.4)
 ----- END FILE CONTENTS -----
+
+<!-- APPENDED (Session 28): STATUS.md — referenced in this file's intro —
+     is extinct; its successor-state role now belongs to STATE.md (live
+     truth) + ARCHIVE.md (rationale), both established this session.
+     The 100%-of-information claim holds against those two files.
+     Fold into the intro prose only if this file is ever reissued;
+     per Session-28 ruling this file is frozen otherwise. -->
+--- SCAFFOLD-NOTES REDIRECT APPENDED, SESSION 28 ---
