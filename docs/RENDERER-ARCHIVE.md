@@ -216,3 +216,109 @@ final geometry is the rev-23 symmetric form.
   session records. Spine §1 rows for 18–23 remain the compressed index;
   this file is now the sole full record for revs 16–23. Archive-append
   debt CLEARED.
+
+───────────────────────────────────────────────────────────────
+
+## SESSION 30 APPEND — revs 24–25 (Batch G) + rev-26 SPLIT WAVE
+(delivered at Session-30 close; anchor = the "Archive-append debt
+CLEARED." line above. Newest-last.)
+
+### REV 24 → REV 25 — BATCH G (Session 29; detail in STATE rev-6/7 records)
+
+- **rev 25 — Batch G close (white-dot swatches, header collapse,
+  prefs-wired boot):**
+  (1) DEVIATION:[white-dot-affordance]: swatch affordability affordance
+  re-specified from white-border (rev 24 scheme) to a centered WHITE
+  DOT on the company-colored swatch, per R13 / Lee §12.6-7 ruling —
+  company color never overwritten; gray filler swatch for nonexistent
+  companies carries no dot. Retires deferred Todo A7/D3 (since
+  Session 20). Implemented in moneyShow's swatch loop.
+  (2) Header/comment collapse per the §7 absorption map (rule-7
+  comment-relocation compliance).
+  (3) DEVIATION:[prefs-wired]: loadPreferences(storage) boot call
+  inserted before first mainUpdate/moneyShow — saved currency unit live
+  at first paint. Renderer-side only; scaffold untouched.
+  DELIVERY LESSON (rev-25 era): the ~14K-token full reissue breached
+  the rule-6 ceiling twice → sanctioned 4-chunk numbered fallback
+  succeeded. This spawned the Session-29 standing rule "chunk-plan
+  near-ceiling issuances from the start" — later revised by the
+  Session-30 lesson below (single-file preferred wherever under
+  ceiling; chunks only at method boundaries).
+- **Okay-vs-Save probe lesson (Session 29, adjacent to Batch G)**:
+  "prefs don't survive reload" was the deliberate Okay=apply-only /
+  Save=persist asymmetry (§12.6-5); writer/reader/boot-call all
+  exonerated by probe. Probe-first discipline vindicated. Okay-trap
+  redesign PARKED pending Lee ruling.
+
+### REV 26 — THREE-WAY RENDERER SPLIT (Session 30; approved Session 29)
+
+- **Wave shape**: rev 25 (~12K tokens, 5 pages) fully re-read across
+  two turns (rules 4/5), then split per the Session-17 dialogs-split
+  precedent (verbatim bodies, new import blocks, zero behavior change):
+  - **renderer-board.ts rev 1**: canvas, fitBoard/redrawGrid/
+    drawCellEntity/drawSels, selector timers, cellFromEvent/mouse
+    handlers; observes chrome.boardRegion; palette imported from chrome.
+  - **renderer-chrome.ts rev 1**: palette constants (now exported),
+    CSS sheet, injectStyles, buildChrome (all factories, flyout, three
+    menus, side panel), menu positioning block, rebuildPlayerList.
+  - **renderer.ts rev 26** (app shell): constructor orchestration,
+    setGridSize + hint trio, turn flow (onContinue/beginTurnChoices/
+    doConclude), actionHooks, moneyShow/mainUpdate, dialog delegates,
+    mountApp. Owns state/storage/concluded/hintTimeout.
+- **Mechanism**: full-app-object plumbing; direct `app.chrome.X` /
+  `app.board.X` property access; no accessor machinery (ruling).
+  Unnamed-map members (setGridSize, hint trio) defaulted to shell.
+  Visibility widened where shell members are called from sub-modules
+  (closeMenus/openMenu in chrome; setGridSize, flashHint, actionHooks,
+  onContinue, doConclude, dialog delegates in shell).
+- **Split-wave mechanical adjustments (logged, zero behavior change)**:
+  (1) `readonly` dropped from eight chrome fields assigned inside
+  buildChrome() (TS2540 — strict TS rejects constructor-called-method
+  assignment to readonly): boardRegion, hintBar, moneyLabel,
+  playerLabel, turnBox, playerList, continueBtn, gridFlyoutPanel.
+  (2) `CLASSIC` import retired from shell (comment-only reference in
+  rev 25; noUnusedLocals hygiene).
+- **Gates**: build green (Lee receipt, VS Code problem count 10 → 0 on
+  shell reissue); game running; §1 baseline pass clean (all three
+  grids, tokens/entities/sels incl. white dots, three menus + Escape,
+  mode radios, two-group prefs).
+- **PROCESS FAILURE + LESSON (the Session-30 lesson)**: the wave was
+  first delivered as five chunks with mid-class splices (board 1,
+  chrome 2, shell 2). Lee's splices of chrome and shell landed part 2
+  OUTSIDE the class closing brace → 256 VS Code problems (diagnostic
+  signature: "property does not exist" for members defined below the
+  break; mkPanel/mkItem/mkTop unresolved as local-const leakage; parse
+  noise from top-level method declarations). Additionally, one model
+  reply corrupted mid-composition during diagnosis (unparseable output;
+  discarded wholesale, nothing carried forward). Recovery: stabilize
+  (git-safe rev 25), diagnose from diagnostics (not guesswork), reissue
+  chrome as ONE complete file (clearing both the splice damage and the
+  TS2540 defect), then the shell as ONE complete file. Board was never
+  implicated. STANDING RULE superseded: single-file issuance under the
+  ceiling is the default; chunk-splices only when a file cannot fit,
+  at complete method boundaries, with explicit part-end markers —
+  never mid-class, never making Lee the assembler at the risk point.
+- **Adjacency**: baseline pass surfaced the buy/sell dialog mid-purchase
+  re-layout defect (dialogs-game.ts side) — logged in STATE rev 7
+  queue; dialogs territory, not renderer.
+
+### APPEND LOG (maintain at file bottom, newest last):
+- Session 21 mid: rev-15 spine reissue recorded (viewport-fit narrative
+  = former notes rev-15 entry, migrated at reorg).
+- Session 21 close: rev 16 (board-top-align) + rev 17 (Batch 2 side
+  panel) appended. Spine pending-detail blocks for both compressed to
+  index lines post-verification — this file is now the sole full record
+  for revs 16–17.
+- Session 25 (cleanup batch N3): revs 18 (defective, process-record) +
+  19 (menu correction) + 20 + 21 + 22 + 23 (entity-art chain, incl. the
+  '2D' typo erratum, the rev-22 hand-tune/restamp episode, and the
+  rev-23 on-disk-final narrative) appended from the spine index rows +
+  session records. Spine §1 rows for 18–23 remain the compressed index;
+  this file is now the sole full record for revs 16–23. Archive-append
+  debt CLEARED.
+- Session 30 close: revs 24–25 (Batch G) + rev-26 three-way split wave
+  appended (block above). N3 junction verified clean (single APPEND
+  LOG confirmed at paste). This file is now the sole full record for
+  revs 16–26. RENDERER-ARCHIVE remains append-only; next append = next
+  substantive renderer touch (candidates: Todo-residual implementations,
+  responsive survey slice).

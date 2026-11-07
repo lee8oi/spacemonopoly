@@ -1,9 +1,9 @@
-# STATE.md — SPACE MONOPOLY PORT — LIVE STATE (rev 6)
+# STATE.md — SPACE MONOPOLY PORT — LIVE STATE (rev 7)
 # Sole source of live truth. Successor to the five-spine notes regime
 # (dissolved Session 28 — migration CLOSED; see ARCHIVE.md Section 0).
 # Decision rationale & full history: ARCHIVE.md (Sections 0–5, all
 # CLOSED). Pre-split renderer deep history (revs 16–23):
-# RENDERER-ARCHIVE.md (frozen). Frozen-scaffold rationale:
+# RENDERER-ARCHIVE.md (append-only). Frozen-scaffold rationale:
 # SCAFFOLD-NOTES.md (frozen, +redirect banner).
 #
 # Transport regime: STATE.md = small, full reissue on change; rev = disk
@@ -12,16 +12,19 @@
 # FRESH_BOOTSTRAP.md = derived pointer, regenerated each session close,
 # non-authoritative.
 #
-# rev 6 (Session 29 FINAL close): SESSION 29 COMPLETE. RENDERER-NOTES
-# dissolution CLOSED — ARCHIVE §5 verified complete (banner + verbatim
-# rev-9 body + END marker; full-file verification served as receipt);
-# file deletion cleared and recorded. Legacy-docs retirement CLOSED —
-# five files deleted (Session 20 Interface Todo, GLOSSARY, SOURCE_MAP,
-# PORT_PLAN, UI_Tier_Map); dispositions in ARCHIVE §0 incl. preserved
-# provenance (© 1998–2001 David Vivash, GPL v2) and UI_Tier_Map addendum.
-# Batch G CLOSED at renderer.ts rev 25 (all scopes Lee-verified, build
-# green). Next queue head: three-way renderer split (rev-26 wave).
-# rev 5: residuals harvest. rev 2–4: see ARCHIVE §5 banner record.
+# rev 7 (Session 30 close): THREE-WAY RENDERER SPLIT CLOSED — rev-26
+# wave complete, Lee-verified (build green, game running, §1 baseline
+# pass clean). renderer.ts rev 26 (app shell) + renderer-chrome.ts rev 1
+# + renderer-board.ts rev 1, full-app-object plumbing, zero behavior
+# change. Split-wave adjustments: `readonly` dropped from eight
+# chrome fields assigned in buildChrome() (TS2540); `CLASSIC` import
+# retired in shell (unused). PROCESS FAILURE + LESSON: mid-class
+# chunk-splice delivery produced 256 VS Code problems (part 2 landing
+# outside the class); retired — SINGLE-FILE ISSUANCE under the ceiling
+# is now the default; splices require Lee sign-off. New queue item:
+# buy/sell dialog mid-purchase re-layout (dialogs-side). Todo residuals
+# remain PARKED (scope ruling this session: split mechanics only).
+# rev 6: Session 29 close (Batch G at renderer rev 25).
 
 ## DISK STATE (verify at session open; build green before any code work)
 
@@ -29,21 +32,22 @@
 |---|---|---|
 | dialogs-core.ts | 1 + `modal` export patch | patch landed, NOT folded; → rev 2 at next substantive touch |
 | dialogs-events.ts | 1 | verbatim split carry |
-| dialogs-game.ts | 6 | Batch F closed (rev 5 layout / rev 6 comments); flippers sole nav |
+| dialogs-game.ts | 6 | Batch F closed (rev 5 layout / rev 6 comments); flippers sole nav; buy/sell dialog resides here (see Queue) |
 | dialogs-meta.ts | 1 | verbatim split carry |
 | dialogs.ts | 9 | barrel — wildcard re-exports of the four modules |
-| renderer.ts | 25 | Batch G CLOSED & Lee-verified: white-dot swatches, header collapse, loadPreferences() boot call |
+| renderer.ts | 26 | app shell: constructor, turn flow, actionHooks, moneyShow/mainUpdate, delegates, mountApp; owns state/hints/scratch |
+| renderer-chrome.ts | 1 | palette + CSS + buildChrome + menus + positioning + rebuildPlayerList; 8 fields lost `readonly` (buildChrome assignment) |
+| renderer-board.ts | 1 | canvas/fit/paint/sels/timers/mouse; observes chrome.boardRegion |
 | scaffold.ts | frozen | +2 sanctioned amendments; do not touch |
 
-Build: green (Lee-confirmed post-rev-25). §1 baseline unchanged and
-re-verified this session. Known errata: ARCHIVE.md Section 0 (dialogs-core
-rev-table correction; rev-10 compaction loss — "(rec)" discipline binding).
+Build: green (Lee-confirmed post-split, Session 30). §1 baseline re-verified
+clean at Session-30 close (all three grids, tokens/entities/sels, three
+menus + Escape, mode radios, two-group prefs; continue-button states).
+Known errata: ARCHIVE.md Section 0 (dialogs-core rev-table correction;
+rev-10 compaction loss — "(rec)" discipline binding).
 
-Docs directory FINAL (Session 29): STATE.md, ARCHIVE.md (Sections 0–5
-complete), FRESH_BOOTSTRAP.md, SCAFFOLD-NOTES.md, RENDERER-ARCHIVE.md,
-+ code files. All five legacy docs + RENDERER-NOTES.md deleted;
-dispositions in ARCHIVE §0; deep renderer history preserved in
-ARCHIVE §5 + RENDERER-ARCHIVE.md.
+Docs directory: STATE.md, ARCHIVE.md (Sections 0–5 complete),
+FRESH_BOOTSTRAP.md, SCAFFOLD-NOTES.md, RENDERER-ARCHIVE.md, + code files.
 
 ## BINDING RULES (violations = process failure)
 
@@ -66,91 +70,107 @@ ARCHIVE §5 + RENDERER-ARCHIVE.md.
 
 ## LIVE DIRECTIONS & CONSTRAINTS
 
+- **Delivery regime (Session-30 lesson; supersedes chunk-plan default)**:
+  a mid-class chunk-splice (part 2 appended outside the closing brace)
+  caused 256 problems in renderer-chrome/renderer — and one turn of
+  model output corrupted mid-composition, compounding diagnosis.
+  STANDING: issue each file as ONE complete artifact whenever it fits
+  under the rule-6 ceiling (~10K); a chunk-splice is permissible ONLY
+  when the file cannot fit, and then at COMPLETE METHOD BOUNDARIES with
+  explicit part-end markers and a splice dry-run note. Never make Lee
+  the assembler mid-class.
+- **Renderer size regime (post-split, standing)**: each renderer
+  sub-file must stay within a single-turn read AND below the ceiling.
+  Current census: shell ≈ 5K, chrome ≈ 5K, board ≈ 2.5K — all healthy.
 - **Tabs dropped** (DEVIATION:[tabs-dropped]): flippers are the complete
   navigation; active-tab color echo retired.
 - **Responsive / mobile-friendly design** (standing intent, unsurveyed):
-  pixel-fixed widths deprecated. Survey scope: renderer.ts, dialogs-core
-  CSS, scaffold-derived layout constants. Core-CSS slice inventoried
-  (Session 28): 320/520px modal bounds, 140px text inputs, 22px indent,
-  18px swatches.
+  pixel-fixed widths deprecated. Survey scope: renderer-chrome CSS,
+  dialogs-core CSS, scaffold-derived layout constants. Core-CSS slice
+  inventoried (Session 28): 320/520px modal bounds, 140px text inputs,
+  22px indent, 18px swatches.
 - **§1 baseline**: square cells 16×12 / 22×18 / 28×24, tokens/entities,
   sels borders, three dropdown menus, mode radios, two-group prefs — renders
-  identically after any dialogs/structural change.
-- **Renderer size regime (Session 29)**: renderer.ts ~14K tokens exceeds
-  both the per-turn ingest budget (~4 pages) and the rule-6 artifact
-  ceiling — motivating the approved three-way split (below). Standing
-  post-split: each renderer sub-file must stay within a single-turn read
-  AND below the ceiling. Near-ceiling issuances default to planning
-  chunks from the start (rev-25 precedent: 4-chunk delivery).
+  identically after any dialogs/structural change. VERIFIED CLEAN against
+  the rev-26 split (Session 30).
 
-## SESSION-29 EXECUTION RECORD (durable summary; detail → ARCHIVE §0/§5)
+## SESSION-30 EXECUTION RECORD (durable summary; detail → RENDERER-ARCHIVE append)
 
-- **Batch G CLOSED at renderer.ts rev 25**: white-dot swatches
-  (DEVIATION:[white-dot-affordance], replaces white-border per R13 —
-  also closes Todo A7/D3, deferred since Session 20); header collapse
-  per §7 absorption map; loadPreferences() boot call
-  (DEVIATION:[prefs-wired], renderer-side only, scaffold untouched).
-  Delivery via the sanctioned 4-chunk fallback (two bare failures first).
-- **Prefs false-positive defect cycle (lesson)**: "prefs don't survive
-  reload" resolved as Okay-vs-Save semantics (Okay = apply-only; Save =
-  persist — deliberate §12.6-5 fidelity). Writer/reader/boot-call
-  exonerated by probe. Okay-trap redesign PARKED (open item).
-- **RENDERER-NOTES dissolution CLOSED**: ARCHIVE §5 = banner + verbatim
-  rev-9 body + END marker, full-file verified (receipt satisfied); file
-  deleted. Deep history: ARCHIVE §5 (rev-24 era) + RENDERER-ARCHIVE
-  (revs 16–23).
-- **Legacy-docs retirement CLOSED**: five pre-migration docs audited,
-  dispositioned, deleted (ARCHIVE §0 entry + UI_Tier_Map addendum).
-  Todo residuals harvested to open items below; provenance preserved.
+- **Three-way renderer split CLOSED**: rev 25 (~12K tokens, 5 pages)
+  re-read in full across two turns (rule 4/5), then split into
+  renderer-chrome.ts rev 1 / renderer-board.ts rev 1 / renderer.ts rev 26.
+  Mechanism: full-app-object plumbing, direct `app.chrome.X`/`app.board.X`
+  property access, no accessor machinery. Bodies carried verbatim except
+  mechanical re-points. `setGridSize` and the hint trio stayed shell-side
+  (unnamed-map default = orchestrator logic in shell).
+- **Splice failure + recovery**: initial chunked delivery (board 1,
+  chrome 2, shell 2) put part 2 of chrome OUTSIDE the class → 256
+  problems. Diagnosed from diagnostics (pattern: members "missing" =
+  defined outside class; mkPanel/mkItem/mkTop unresolved = local-const
+  leakage). Recovered by SINGLE-FILE reissue of chrome (also fixing the
+  predicted TS2540 `readonly` defect), then single-file reissue of the
+  shell. Board was never implicated — chunk 1 stood as delivered.
+  Model-output corruption occurred in one reply this session; nothing
+  from it was carried forward; recovery followed Stabilize→Diagnose→Re-run.
+- **Gates**: build green (Lee receipt); §1 baseline pass clean (Lee);
+  game running. Trade-dialog sizing defect NOTED during baseline
+  (below) — separated from split verification as dialogs-side scope.
+- **BOOKKEEPING DEBT CLEARED THIS SESSION**: RENDERER-ARCHIVE deep-history
+  append composed (revs 24–25 Batch G story + rev-26 split + process
+  lesson), delivered as anchored tail-append payload. N3 junction check
+  (one-vs-two APPEND LOG) folded into the same paste instruction.
 
 ## OPEN ITEMS
 
-- **Four Todo residuals (harvested Session 29; renderer-side)**:
+- **Four Todo residuals (harvested Session 29; renderer-side; PARKED but
+  now CHEAP — renderer sub-files all re-readable in one turn)**:
   (a) **Buildings entity** — original shows stacked yellow-roofed
-  buildings ~3/cell; `drawCellEntity` (rev 25) has NO buildings branch —
-  confirm against orig evidence, then implement or consciously drop;
+  buildings ~3/cell; `drawCellEntity` (now renderer-board rev 1) has NO
+  buildings branch — confirm against orig evidence, then implement or
+  consciously drop; needs Lee's orig-evidence materials.
   (b) **Player-token color source** (B5): player-blue vs company-colored,
-  unresolved; (c) **Betelguese spelling check** (B10): compare port
+  unresolved; needs orig evidence (B5).
+  (c) **Betelguese spelling check** (B10): compare scaffold
   COMPANY_DEFS against orig `&Betelguese` caption — QUIRK-FIDELITY
-  candidate; (d) **Initial menu-enablement vs orig** (§11.7): port's
-  pre-game defaults believed faithful (Session-19c polarity work) but
-  never formally closed against orig pre-game state. Cheap to batch at
-  the three-way-split session (rev 25 fully re-read there anyway).
+  candidate; needs the COMPANY_DEFS paste (scaffold frozen — paste only).
+  (d) **Initial menu-enablement vs orig** (§11.7): port's pre-game
+  defaults believed faithful (Session-19c polarity work) but never
+  formally closed against orig pre-game state; needs orig evidence.
+- **Buy/sell dialog mid-purchase re-layout (NEW, Session-30 baseline
+  observation)**: trade dialog changes size during stock purchase as
+  share counts change length, shifting wording. dialogs-game.ts side
+  (rev 6, rev→7 on fix). Rule 1 (probe-first) applies at fix session.
 - **Okay-trap ruling (parked)**: first documented user trip on
-  Okay-vs-Save persist asymmetry (Session 29). Deliberate fidelity design
-  (§12.6-5); changing it is a dialogs-side patch awaiting a Lee ruling.
+  Okay-vs-Save persist asymmetry (Session 29). Deliberate fidelity
+  design (§12.6-5); changing it is a dialogs-side patch awaiting a
+  Lee ruling.
 - **Currency symbol raw byte** (verify before ship): default assumed £
   (Windows-1252 mojibake); confirm against orig binary.
 - **SCAFFOLD-NOTES amendment log**: dated line for DEVIATION:[square-cells]
   still owed (Lee's hand at next scaffold-notes touch).
 - **RENDERER-ARCHIVE junction verification (minor)**: N3 append payload
-  verified complete; junction with pre-existing rev-17 entry / APPEND LOG
-  replacement unconfirmed if the Session-29 paste was tail-only.
-  Also due at the split session: RENDERER-ARCHIVE deep-history append for
-  revs 24–25 (rev 26 happens next).
+  verified complete; one-vs-two APPEND LOG count folded into the
+  Session-30 append application — Lee confirms at paste.
 
 ## QUEUE
 
-1. **Three-way renderer split (APPROVED, Session-29 rulings)** —
-   renderer-chrome.ts (palette + CSS + chrome/menu construction) /
-   renderer-board.ts (paint, fit, mouse, timers) / renderer.ts app shell
-   (turn flow, mainUpdate, delegates, actionHooks). Zero behavior change;
-   Session-17 dialogs-split precedent (verbatim carries, import blocks
-   new, barrel optional); full-app-object plumbing (no accessor
-   machinery). Rev-26 wave; design composed at its own session; gates:
-   build green, §1 baseline, every sub-file under ingest/ceiling limits.
-   Requires full rev-25 paste train (multiple turns, rule 4). Fold in:
-   Todo-residual verifications; RENDERER-ARCHIVE rev-24/25 append.
-2. **Responsive-design survey** (see Live Directions): scope a batch
+1. **Todo residuals batch** (a)–(d): with the split done, all evidence
+   gaps are paste-sized; cheap to close in one session with Lee-supplied
+   orig materials. Implement or consciously-drop rulings are Lee's.
+2. **Buy/sell dialog sizing fix** (dialogs-game.ts rev 6 → 7): probe-first
+   on the mid-purchase re-layout; likely fixed-width table/label columns;
+   preserve §1 baseline.
+3. **Responsive-design survey** (see Live Directions): scope a batch
    proposal. Natural pairing: dialogs-core rev 2 fold-in.
-3. **dialogs-core rev 2**: fold `modal` patch into header-noted reissue at
+4. **dialogs-core rev 2**: fold `modal` patch into header-noted reissue at
    next substantive touch; header repoints history refs to ARCHIVE.md.
-4. **Bootstrap regeneration** — at each session close, from this file.
+5. **Bootstrap regeneration** — at each session close, from this file.
 
 ## SESSION-OPEN PROTOCOL
 
 1. Lee confirms disk state matches table + build green.
 2. Lee announces queue item; required file pastes follow (one large file
-   per turn, per rule 4).
+   per turn, per rule 4). Post-split: renderer sub-files each fit one
+   turn; full-file re-reads are cheap again.
 3. Re-read all pages of any to-be-revised file before composing. No code
    before gates clear.
