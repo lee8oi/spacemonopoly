@@ -1,30 +1,18 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 24
-// Chain of revs 20–22 (Sessions 23/23b/23c, issued): board-entity art
-// at drawCellEntity(); rev 21 removed the diamond highlight ellipse,
-// enlarged the cross, improved letter readability; rev 22 gave the
-// vertical arms full cell-height bleed and a 58% center square.
-// REV 23 (interim, hand-tuned on disk after rev 22, NEVER ISSUED until
-// now — written down here per the bootstrap's rev-table correction):
-// the logged scaffold amendment DEVIATION:[square-cells] made cells
-// square, so the cross was re-symmetrized — all four arms use the SAME
-// span fraction of the (now square) cell (halfSpan 46%); the rev-22
-// vertical full-bleed is retired; center square 70% of cell.
-// REV 24 (Session 25, Batch D): dialogs.ts rev 7 coupling edits —
-//  (1) NewGameDialogCallbacks.setGridSize was DELETED from dialogs.ts
-//      rev 7 (grid choice owned solely by Options → Grid Size, ruling
-//      §12.6-5), so this file's newGameDialog delegate drops its
-//      setGridSize entry. The app's own setGridSize() method is
-//      untouched (still used by the constructor and the Grid Size
-//      flyout).
-//  (2) mergerDialog call site pruned: the long-unused
-//      oldSurvivorValue/absorbedValue ARGUMENTS are gone (dialogs.ts
-//      rev 7 removed them from the signature). The local
-//      oldSurvivorValue is deleted; the local absorbedValue REMAINS —
-//      it is still needed to compute moneyEarned
-//      (= absorbed shares × PRE-merger absorbed value).
-// Notes reissue (RENDERER-NOTES rev 9) still deferred to the session's
-// milestone consolidation, per the Session-24 rhythm.
+// SPACE MONOPOLY PORT — RENDERER / UI LAYER (renderer.ts) — rev 25
+// App shell: chrome (menubar/menus, side panel), responsive canvas board,
+// mouse, timers, turn flow, dialog delegates, and action() hooks.
+// REV 25 (Session 29, Batch G):
+//  (1) Swatch affordability = centered WHITE DOT on the company-colored
+//      swatch, replacing the rev-3 white BORDER
+//      (DEVIATION:[white-dot-affordance]; R13 / Lee ruling §12.6-7).
+//  (2) Header + historical commentary collapsed per the comment-
+//      relocation policy; live contracts stay at their sites.
+//      History: ARCHIVE.md Section 5 (rev-24-era spine);
+//      RENDERER-ARCHIVE.md (renderer revs 16–23).
+//  (3) DEVIATION:[prefs-wired] — loadPreferences(this.storage) runs at
+//      construction, before first paint, activating the dormant scaffold
+//      reader on boot (option b; supersedes the orig half-wired quirk).
 // ============================================================================
 
 import {
@@ -56,6 +44,7 @@ import {
   finishStandings,
   highScores,
   createComs,
+  loadPreferences,
   PREFERENCES_STORE_KEY,
 } from './scaffold';
 import type { GridType } from './scaffold';
@@ -78,91 +67,35 @@ import {
 } from './dialogs';
 import type { SplitTableRow, MergerTableRow } from './dialogs';
 
-// R2 RETIRED (Session 13): the NEW_GAME_RANDOMISES flag is deleted.
-// Board-on-new-game behavior now lives in scaffold startGame()
-// (FIX:[phase3-verified]): circles survive, companies/diamonds stripped —
-// Lee-verified observable spec of the original binary.
-// R14 RETIRED (rev 10): standings auto-show at natural game end, per orig
-// BitBtn1Click Finish(); the continue button remains a post-hoc viewer.
-// R15 RETIRED (rev 11): split/merger dialogs carry per-player tables
-// (orig SplitForm/Merger ListView content), matching the orig display
-// ranges (CLASSIC all players; TOURNAMENT current player only).
-// R16 RETIRED (rev 12): end-of-game sequence is standings modal →
-// high-scores modal (tabbed, current grid's tab activated, new entries
-// highlighted), per orig Finish(); HighScores(true);. The standalone
-// High Scores menu dialog shares the tabbed presentation.
-// R9 SUPERSEDED-BY-REVISION (rev 19): the sm-menubar <select> is
-// DELETED; grid-size control is Options → Grid Size flyout with literal
-// asterisk captions (A4). Actual-geometry knowledge is trivia only.
-// R10 RETIRED (rev 17): players list is now NAMES-ONLY per A5 FIDELITY —
-// the name+money enhancement is dead; current-player balance lives in
-// the top box (B8b).
-// REV 13 SPLIT: dialog presentation moved to dialogs.ts; this file keeps
-// chrome/board/timer/mouse/turn-flow/actionHooks.
-// REV 14 (BATCH 1): responsive board (transform-based, DPR-aware,
-// ResizeObserver); DEVIATION:[dark-checker]; DEVIATION:[title-short];
-// column root layout; R12 hint strip below board.
-// REV 15 (FIX:[viewport-fit]): height model MIN → FIT — root occupies
-// exactly the viewport, min-height: 0 down the flex chain, host-page
-// normalization, side panel scrolls internally, ≤720px exempted.
-// REV 16 (FIX:[board-top-align]): board TOP-aligned in its region —
-// width-bound fits no longer float the board; top flush with panel top
-// at every size; leftover collects between board and hint bar.
-// REV 17 (BATCH 2): side panel recomposed to the ORIGINAL hierarchy per
-// B6 — see the side-panel construction in buildChrome and the REV 17
-// CSS block below. Turn-context ("Turn X of N", "(Tournament)") moved
-// from the panel to the R12 hint bar (Lee ruling).
-// REV 18 (DEFECTIVE, superseded): menu design correct, implementation
-// broken (stylesheet lost / permanent overlay / DOM-scrape gating).
-// REV 19 (BATCH 3 CORRECTION): rev-17 stylesheet restored VERBATIM;
-// menu system rebuilt — see the REV 19 MENU block in buildChrome.
-// REV 20 (SESSION 23): board-entity art at drawCellEntity(); sels
-// correction in drawSels(). Tuned by revs 21–22.
-// REV 21 (SESSION 23b): diamond highlight removed, cross enlarged,
-// letter readability improved (stroked-outline halo).
-// REV 22 (SESSION 23c): vertical arms reach the cell edges; center
-// square enlarged to 58%.
-// REV 23 (interim, disk-only, now recorded): square-cells amendment —
-// symmetric cross, all arms same span fraction (46%), center 70%;
-// no vertical full-bleed.
-// REV 24 (SESSION 25, BATCH D): dialogs-rev-7 coupling — new-game
-// delegate drops setGridSize; merger call site prunes the two unused
-// mergerDialog arguments.
-const TIMER_INTERVAL_MS = 250;     // R1
-const SCORES_STORE_KEY = 'HighScores'; // R5
+const TIMER_INTERVAL_MS = 250;        // orig Timer1 interval unknown; chosen
+const SCORES_STORE_KEY = 'HighScores'; // storage key (orig: per-table files)
 
-// Palette (orig ImageList tiles approximated in primitives — NOTES §4.6)
-// REV 14 (B4): checker contrast strengthened + grid lines added —
-// dark-adapted restore of the orig bordered beige checker.
-// DEVIATION:[dark-checker]: dark palette per B1; if D1 light theme ever
-// lands, restoring the beige checker is a two-constant change.
+// Palette — approximations of orig ImageList tiles, tuned for the dark
+// theme. DEVIATION:[dark-checker]: beige→dark checker (B1); restoring the
+// orig beige checker is a two-constant change if a light theme (D1) lands.
 const CHECKER_A = '#43435e';
 const CHECKER_B = '#36364d';
 const GRID_LINE = '#12121c';
-// REV 20: CIRCLE updated to faithful blue, brightened for dark board.
-// Orig: flat medium-blue fill, thick dark-blue outline.
-// Brightened variant (tunable live): #4f83e8 fill, #16204a outline.
+// Faithful blue circle, brightened for the dark board (tunable live).
 const CIRCLE_FILL = '#4f83e8';
 const CIRCLE_STROKE = '#16204a';
-// REV 21: DIAMOND highlight ellipse REMOVED (read as a spurious "O" at
-// cell sizes). Flat vivid yellow rotated square, thin black outline.
+// Faithful yellow rotated square; flat fill, thin black outline (the
+// rev-21 highlight ellipse is dead — it read as a spurious glyph).
 const DIAMOND_FILL = '#ffd74a';
 const DIAMOND_STROKE = '#12121c';
-// REV 20: SELS correction (folded in with entity art, Lee ruling).
-// Normal selection: solid royal blue (#0000FF) fill + thick white border.
-// Active (timer-cycled): solid blue square + thick lime-green border.
+// Sels (rev-20 correction): normal = solid royal blue + thick white
+// border; active (timer-cycled) = solid blue + thick lime-green border.
 const SEL_FILL = '#0000ff';
 const SEL_BORDER_NORMAL = '#ffffff';
 const SEL_BORDER_ACTIVE = '#32cd32'; // lime green
 const ACTIVE_STROKE = '#32cd32';     // same as SEL_BORDER_ACTIVE
-// REV 17 (B8): faithful-bright teal turn box (VCL clTeal #008080 as the
-// faithful anchor — hex is an approximation pending closer evidence;
-// dark numerals per approved design). Theming revisit is Lee-flagged.
+// Teal turn box: faithful-bright VCL clTeal #008080 (approximation);
+// dark numerals per approved design. Theming revisit is Lee-flagged.
 const TURNBOX_BG = '#008080';
 const TURNBOX_FG = '#063030';
 const TURNBOX_SEP = '#2b2b45';
-// REV 19: menu chrome constants (DEVIATION:[menu-styling] — dark-app
-// adaptation of Win2k native menu colors; see NOTES §1a).
+// Menu chrome (DEVIATION:[menu-styling] — dark-app adaptation of Win2k
+// native menu colors).
 const MENU_BG = '#f4f4f0';
 const MENU_FG = '#1a1a24';
 const MENU_HOVER_BG = '#316ac5';   // clHighlight
@@ -172,33 +105,14 @@ const MENU_BORDER = '#8a8a96';
 const MENU_UNDERLAY_Z = '900';    // below dialog overlays (dialogs.ts)
 const MENU_PANEL_Z = '905';
 
-// REV 13 SPLIT — chrome/board CSS only. The modal/toast/tab classes
-// (.sm-overlay/.sm-modal/.sm-toast/.sm-tabs/etc.) moved to dialogs.ts's
-// DIALOG_CSS, injected there via injectDialogStyles(). Order preserved:
-// chrome stylesheet first, dialog stylesheet second.
-// REV 14 (B3): column root (menubar full-width, then content row);
-// .sm-board chrome stripped; canvas paints edge-to-edge in its region,
-// aspect-preserved (4:3). R12 hint strip below the board.
-// First-cut small-screen accommodation (≤720px stacks board above the
-// panel) — dedicated mobile pass deferred.
-// REV 15 (FIX:[viewport-fit]): html/body normalization; root height 100vh
-// + box-sizing; min-height: 0 down the flex chain; side panel scrolls
-// internally; ≤720px exempted from the fit model.
-// REV 16 (FIX:[board-top-align]): .sm-boardregion align-items FLEX-START
-// (width-bound fits no longer float the board; leftover collects between
-// board and hint bar).
-// REV 17 (BATCH 2): side-panel classes recomposed to the ORIGINAL
-// hierarchy — .sm-current (top box: clickable, name + money, "£0"
-// pre-game), company rows with THIN SEPARATORS and NO heading (QUESTION:
-// Label5 evidence pending), .sm-players names-only plain rows
-// (single-click details — DEVIATION:[singleclick-details]), .sm-turnbox
-// (large teal box, current turn number only), Finish Turn at bottom.
-// .sm-players li.current highlight and the .sm-turn "Turn X of Y" line
-// are DELETED (A5 FIDELITY: orig list is plain; turn context moved to
-// the hint bar).
-// *** REV 19: THE FOLLOWING STYLESHEET IS THE REV-17 STYLESHEET VERBATIM
-// (preservation-verification rule, Session-22) with the REV-19 MENU RULES
-// APPENDED at the end — nothing above the append marker is modified. ***
+// Chrome stylesheet. Board canvas paints edge-to-edge in its region;
+// side panel scrolls internally; ≤720px stacks board above panel
+// (first-cut accommodation; dedicated mobile pass deferred — see
+// STATE.md responsive direction). Dialog CSS is injected separately
+// by injectDialogStyles() (dialogs.ts); chrome sheet first, dialog
+// sheet second — order preserved.
+// REV 25: .sm-swatch gains position:relative + a centered .sm-dot child
+// rule (white-dot affordability); swatch border is STATIC #333 now.
 const CSS = `
 html, body { margin: 0; height: 100%; }
 .sm-root { display: flex; flex-direction: column; gap: 10px;
@@ -230,11 +144,13 @@ html, body { margin: 0; height: 100%; }
 .sm-players { list-style: none; margin: 0; padding: 0; }
 .sm-players li { padding: 3px 4px; cursor: pointer; }
 .sm-comrow { display: flex; align-items: center; gap: 8px; padding: 6px 0;
-  border-bottom: 1px solid ${'#2b2b45'}; }
+  border-bottom: 1px solid ${TURNBOX_SEP}; }
 .sm-comrow:last-child { border-bottom: none; }
 .sm-comrow button { flex: 1; text-align: left; }
 .sm-swatch { width: 14px; height: 14px; border-radius: 3px; flex: none;
-  border: 1px solid #333; }
+  border: 1px solid #333; position: relative; }
+.sm-swatch .sm-dot { position: absolute; inset: 4px; background: #ffffff;
+  border-radius: 50%; }
 .sm-turnbox { background: #008080; color: #063030; font-size: 38px;
   font-weight: 700; text-align: center; padding: 8px  0; border-radius: 4px;
   flex: none; min-height: 24px; }
@@ -244,7 +160,7 @@ html, body { margin: 0; height: 100%; }
   .sm-side { width: auto; overflow-y: visible; }
   .sm-boardregion { min-height: 55vh; }
 }
-/* ==== REV 19 MENU RULES (appended; chrome rules above untouched) ==== */
+/* ==== MENU RULES (dropdown panels; DEVIATION:[menu-styling]) ==== */
 .sm-menubar .sm-menubtn { background: #2a2a44; color: #e8e8f2;
   border: 1px solid #4a4a6a; border-radius: 4px; padding: 4px 10px;
   cursor: pointer; font-size: 14px; }
@@ -277,17 +193,15 @@ export class SpaceMonopolyApp {
   private playerLabel!: HTMLElement;
   private turnBox!: HTMLElement;
   private playerList!: HTMLUListElement;
-  private companyRows: Array<{ btn: HTMLButtonElement; swatch: HTMLElement }> = [];
+  // REV 25: swatch rows gain the affordability DOT element
+  // (DEVIATION:[white-dot-affordance] — dot visible = affordable).
+  private companyRows: Array<{ btn: HTMLButtonElement; swatch: HTMLElement; dot: HTMLElement }> = [];
   private continueBtn!: HTMLButtonElement;
 
-  // REV 19: menu system state. menuItems = every menu row, held BY
-  // REFERENCE (rev-18 lesson: no querySelector scraping in mainUpdate).
-  // menuPanels = all four dropdown/flyout panels (bulk hide on close —
-  // the .sm-menupanel display:none default keeps them invisible at
-  // construction). gridFlyoutPanel = the Grid Size flyout. topMenus =
-  // the three top-level buttons. Panels are positioned via
-  // getBoundingClientRect (position:fixed, viewport coords) at OPEN
-  // time — never at construction.
+  // Menu system state. menuItems = every menu row, held BY REFERENCE
+  // (never querySelector-scrape in mainUpdate — rev-18 lesson). Panels
+  // positioned via getBoundingClientRect at OPEN time, never at
+  // construction. gridFlyoutPanel = the Grid Size flyout.
   private menuItems: Record<string, HTMLDivElement> = {};
   private menuPanels: HTMLDivElement[] = [];
   private gridFlyoutPanel!: HTMLDivElement;
@@ -302,26 +216,24 @@ export class SpaceMonopolyApp {
   private concluded = false;
   private hintTimeout: number | null = null;
 
-  // (REV 13 SPLIT) The modal queue moved to dialogs.ts with every queued
-  // consumer; this class no longer owns dialog-presentation machinery.
-
   constructor(root: HTMLElement, storage: Storage = localStorage) {
     this.root = root;
     this.storage = storage;
     this.injectStyles();
     this.buildChrome();
     this.setGridSize(SMALL); // includes randomise — FIDELITY: orig FormCreate
-    // REV 14 (B3): responsive board — observe the board region and refit
-    // (also delivers the initial paint once layout lands; fitBoard
-    // early-returns on zero-size regions, e.g. the constructor-time call).
-    // REV 15: the region now reports the FITTED height (see CSS notes) —
-    // that is the fix; the observer/fit logic itself is unchanged.
+    // Responsive board — observe the board region and refit (delivers the
+    // initial paint once layout lands; fitBoard early-returns on zero-size
+    // regions, e.g. this constructor-time path).
     this.resizeObs = new ResizeObserver(() => this.fitBoard());
     this.resizeObs.observe(this.boardRegion);
-    // REV 19: Esc dismisses any open menu (DEVIATION:[menu-interaction]).
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeMenus();
+      if (e.key === 'Escape') this.closeMenus(); // DEVIATION:[menu-interaction]
     });
+    // DEVIATION:[prefs-wired] (REV 25): activate stored preferences at
+    // boot, BEFORE the first mainUpdate/moneyShow, so a saved currency
+    // unit is live for the first paint instead of flashing the default.
+    loadPreferences(this.storage);
     this.mainUpdate();
     this.moneyShow();
   }
@@ -330,18 +242,16 @@ export class SpaceMonopolyApp {
 
   private injectStyles(): void {
     const style = el('style');
-    style.textContent = CSS; // rev 19: rev-17 stylesheet + appended menu rules
+    style.textContent = CSS;
     document.head.appendChild(style);
     this.root.classList.add('sm-root');
-    injectDialogStyles(); // rev 13: dialog CSS from dialogs.ts, order unchanged
+    injectDialogStyles(); // dialog CSS from dialogs.ts; chrome sheet first
   }
 
   private buildChrome(): void {
-    // REV 14 (B3): menubar now full-width at top level of the column root;
-    // board column (~68%) + side panel form the content row beneath it.
-    // REV 19 (BATCH 3): the menubar CONTENT is three dropdown menus
-    // (Project / Options / Help) per B2; the select element is DELETED
-    // (grid size now lives in Options → Grid Size, A4 flyout).
+    // Column root: full-width menubar, then content row (board column
+    // ~68% + side panel). Menubar CONTENT = three dropdown menus
+    // (Project / Options / Help); no select elements.
     const menubar = el('div', 'sm-menubar');
 
     // Leaf-item factory: div row with an 18px gutter (bullet lives there
@@ -471,10 +381,10 @@ export class SpaceMonopolyApp {
     this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
     this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
 
-    // REV 14 (B3): board fills the board column edge-to-edge vertically
-    // under the menubar (region), top-aligned (rev 16), aspect-preserved.
-    // R12 hint bar (kept per inventory A6) = reserved slim strip below the
-    // region (no board occlusion).
+    // Board fills the board column edge-to-edge vertically under the
+    // menubar (region), top-aligned, aspect-preserved. R12 hint bar
+    // (kept per inventory A6) = reserved slim strip below the region
+    // (no board occlusion).
     this.boardRegion = el('div', 'sm-boardregion');
     this.boardRegion.appendChild(this.canvas);
     const boardCol = el('div', 'sm-boardcol');
@@ -486,19 +396,15 @@ export class SpaceMonopolyApp {
     const content = el('div', 'sm-content');
     content.appendChild(boardCol);
 
-    // ==========================================================================
-    // REV 17 (BATCH 2) — SIDE PANEL, ORIGINAL HIERARCHY (B6):
+    // ---- SIDE PANEL, ORIGINAL HIERARCHY (B6) --------------------------------
     // (1) current-player box → (2) company list → (3) names-only Players
-    // box → (4) teal turn box → (5) Finish Turn. Replaces the rev-13
-    // order (Players → Current Player dup → Companies → button) and
-    // absorbs B11's wonkiness ledger. (Restored intact in rev 19.)
-    // ==========================================================================
-    const side = el('div', 'sm-side');
+    // box → (4) teal turn box → (5) Finish Turn.
 
     // (1) B6/B8b: current-player box. Pre-game = "£0" (moneyShow drives
     // it); in play = current player's name over balance. Single-click
-    // opens the CURRENT player's details (Lee ruling — pairs with the
-    // single-click rows below; orig had no box equivalent).
+    // opens the CURRENT player's details (pairs with the single-click
+    // rows below; orig had no box equivalent).
+    const side = el('div', 'sm-side');
     const topPanel = el('div', 'sm-panel sm-current');
     this.playerLabel = el('div', 'sm-cpname', '');
     this.moneyLabel = el('div', 'sm-money', '');
@@ -512,16 +418,18 @@ export class SpaceMonopolyApp {
     side.appendChild(topPanel);
 
     // (2) B10: company list — plain clickable rows, swatch + name, thin
-    // separators. NO heading (QUESTION: orig screenshot shows the list
-    // starting immediately with the first button; dfm Label5 exists but
-    // text/position unreadable — reinstate if wider evidence lands).
-    // Company ORDER verified this session (screenshot = port
-    // COMPANY_DEFS order exactly). Swatch shape held for D3.
+    // separators. NO heading (source-confirmed Session 24 §12.6-8 —
+    // permanent). Company order = port COMPANY_DEFS order (verified).
+    // REV 25: each swatch gains a centered dot child — AFFORDABILITY
+    // indicator (white dot on company color; hidden when unaffordable
+    // or company nonexistent). DEVIATION:[white-dot-affordance].
     const cPanel = el('div', 'sm-panel');
     for (let i = 0; i < NUM_COMPANIES; i++) {
       const row = el('div', 'sm-comrow');
       const swatch = el('span', 'sm-swatch');
       swatch.style.background = COMPANY_DEFS[i].color;
+      const dot = el('span', 'sm-dot');
+      swatch.appendChild(dot);
       const btn = el('button', undefined, COMPANY_DEFS[i].name);
       btn.addEventListener('click', () => {
         if (this.state.company[i]?.exist) this.tradeDialog(i);
@@ -529,15 +437,15 @@ export class SpaceMonopolyApp {
       row.appendChild(swatch);
       row.appendChild(btn);
       cPanel.appendChild(row);
-      this.companyRows.push({ btn, swatch });
+      this.companyRows.push({ btn, swatch, dot });
     }
     side.appendChild(cPanel);
 
-    // (3) A5 FIDELITY: Players box — NAMES ONLY (orig layout; R10's
-    // name+money enhancement retired). Plain rows, no current-player
-    // highlight ("copy the original design"). DEVIATION:[singleclick-
-    // details]: details open on SINGLE-click (orig = ListBox dblclick)
-    // — restores per-player details access for everyone.
+    // (3) A5 FIDELITY: Players box — NAMES ONLY (orig layout). Plain
+    // rows, no current-player highlight ("copy the original design").
+    // DEVIATION:[singleclick-details]: details open on SINGLE-click
+    // (orig = ListBox dblclick) — restores per-player details access
+    // for everyone.
     const pPanel = el('div', 'sm-panel');
     pPanel.appendChild(el('h4', undefined, 'Players'));
     this.playerList = el('ul', 'sm-players');
@@ -545,15 +453,15 @@ export class SpaceMonopolyApp {
     side.appendChild(pPanel);
 
     // (4) B8 FIDELITY: large teal box showing ONLY the current turn
-    // number. Max-turns context and the "(Tournament)" tag moved to the
-    // R12 hint bar (Lee ruling). Populated in mainUpdate; blank pre-game.
+    // number. Max-turns context and the "(Tournament)" tag live in the
+    // R12 hint bar. Populated in mainUpdate; blank pre-game.
     this.turnBox = el('div', 'sm-turnbox', '');
     side.appendChild(this.turnBox);
 
     // (5) B7: Finish Turn — in-game label per orig BitBtn1; gating and
-    // post-game "Game Over" disabled state are the rev-4/10 logic in
-    // mainUpdate, untouched. "Place a piece…" sels text kept (port
-    // addition — orig just disables the button while sels).
+    // post-game "Game Over" disabled state are mainUpdate's job.
+    // "Place a piece…" sels text kept (port addition — orig just
+    // disables the button while sels).
     this.continueBtn = el('button', undefined, 'Finish Turn');
     this.continueBtn.addEventListener('click', () => this.onContinue());
     side.appendChild(this.continueBtn);
@@ -563,16 +471,13 @@ export class SpaceMonopolyApp {
     this.root.appendChild(content);
   }
 
-  // ==========================================================================
-  // REV 19 (BATCH 3) — MENU OPEN/CLOSE/POSITIONING
+    // ---- MENU OPEN/CLOSE/POSITIONING -----------------------------------------
   // Panels are position:fixed; geometry computed at OPEN time from
   // getBoundingClientRect (viewport coords — immune to ancestor stacking
-  // and to the flex/menubar-wrap layout; the rev-18 offsetLeft approach
-  // is dead). Panels are display:none by CSS default; openMenu/openFlyout
-  // reveal them; closeMenus hides ALL panels. The underlay exists ONLY
-  // while a menu is open (rev-18 permanent-overlay defect) and is
-  // REMOVED on close.
-  // ==========================================================================
+  // and the flex/menubar-wrap layout). Panels are display:none by CSS
+  // default; openMenu/openFlyout reveal them; closeMenus hides ALL
+  // panels. The underlay exists ONLY while a menu is open and is
+  // REMOVED on close — never a resident click-blocker.
 
   private openMenu(idx: number, panel: HTMLDivElement): void {
     this.closeMenus(); // hide any open panel/flyout/underlay first
@@ -632,8 +537,6 @@ export class SpaceMonopolyApp {
     this.closeUnderlay();
   }
 
-  // Underlay: created on open, REMOVED on close (rev-18 defect fix —
-  // never resident while idle; all page interaction stays unblocked).
   private ensureUnderlay(): void {
     if (this.underlay) return;
     const u = el('div', 'sm-menuunderlay');
@@ -653,8 +556,7 @@ export class SpaceMonopolyApp {
   }
 
   // Rows rebuilt in mainUpdate(); single-click row = that player's
-  // details (DEVIATION:[singleclick-details]; supersedes rev-2's
-  // FIDELITY:[itemindex] dblclick, whose list is now names-only anyway).
+  // details (DEVIATION:[singleclick-details]).
   private rebuildPlayerList(): void {
     const s = this.state;
     this.playerList.textContent = '';
@@ -674,20 +576,18 @@ export class SpaceMonopolyApp {
     this.state.maxTurns = cfg.maxTurns;
     this.state.grid.resize(cfg.xsize, cfg.ysize, CELL_EMPTY);
     this.state.grid.randomise(); // FIDELITY: orig setGridSize randomises
-    // REV 19: no select element to sync (R9 superseded); the flyout
-    // bullet state is refreshed in mainUpdate via gridBullets.
     this.fitBoard();
     this.mainUpdate();
   }
 
-  // REV 14 (B3): responsive fit. Computes the largest aspect-preserving
-  // board inside the board region, sets the canvas' CSS size to it and the
-  // backing store to display size × devicePixelRatio (crisp at any DPR —
-  // no upscale blur). Early-returns on zero-size regions (constructor /
+  // Responsive fit. Computes the largest aspect-preserving board inside
+  // the board region, sets the canvas' CSS size to it and the backing
+  // store to display size × devicePixelRatio (crisp at any DPR — no
+  // upscale blur). Early-returns on zero-size regions (constructor /
   // detached roots); the ResizeObserver delivers the first real fit once
-  // layout lands. FIXED SIDE BENEFIT: FIX:[click-mapping]'s
-  // rect-proportional mouse mapping is immune to display scaling, so
-  // clicks stay correct at every size with no mouse-side changes.
+  // layout lands. FIX:[click-mapping]'s rect-proportional mouse mapping
+  // is immune to display scaling, so clicks stay correct at every size
+  // with no mouse-side changes.
   private fitBoard(): void {
     const cfg = this.state.gridConfig();
     const baseW = cfg.xsize * cfg.tileW;
@@ -713,9 +613,9 @@ export class SpaceMonopolyApp {
     const baseW = cfg.xsize * cfg.tileW;
     const baseH = cfg.ysize * cfg.tileH;
 
-    // REV 14 (B3): map base-tile drawing units onto the backing store.
-    // ALL existing draw sites (drawCellEntity, drawSels) remain in base
-    // units and scale for free. clearRect is in BASE units too — clearing
+    // Map base-tile drawing units onto the backing store. ALL existing
+    // draw sites (drawCellEntity, drawSels) remain in base units and
+    // scale for free. clearRect is in BASE units too — clearing
     // canvas.width/height here would clear in transformed units and
     // misbehave (backing-store pixels ≠ base units). Keep clear bounds
     // in base units.
@@ -727,17 +627,15 @@ export class SpaceMonopolyApp {
     for (let y = 0; y < cfg.ysize; y++) {
       for (let x = 0; x < cfg.xsize; x++) {
         // Checkerboard — ImageList iStart + (x+y)%2 equivalent.
-        // REV 14 (B4): DEVIATION:[dark-checker] — contrast strengthened
-        // (palette above); the borders below complete the structure.
+        // DEVIATION:[dark-checker] — dark palette per B1.
         ctx.fillStyle = (x + y) % 2 === 0 ? CHECKER_A : CHECKER_B;
         ctx.fillRect(x * cfg.tileW, y * cfg.tileH, cfg.tileW, cfg.tileH);
         this.drawCellEntity(x, y);
       }
     }
 
-    // REV 14 (B4): thin cell borders — single grid-line pass AFTER the
-    // fills/entities so lines read over both checker phases (orig
-    // structure: bordered checker; dark-adapted per B1).
+    // Thin cell borders — single grid-line pass AFTER the fills/entities
+    // so lines read over both checker phases.
     ctx.strokeStyle = GRID_LINE;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -754,21 +652,19 @@ export class SpaceMonopolyApp {
     this.drawSels();
   }
 
-  // REV 20/21/22/23: SEAM — board-entity art at drawCellEntity(). Evidence
-  // base: Lee's piece close-up screenshots + live play feedback.
-  // Contract: draws in BASE tile units under canvas transform.
+  // SEAM — board-entity art at drawCellEntity(). Swap point if extracted
+  // .res bitmaps are ever wanted. Contract: draws in BASE tile units
+  // under the canvas transform.
   //
   // Entities:
   //  (1) COMPANY_CELL_BASE+: symmetric CROSS TOKEN in company color,
-  //      thick dark outline tracing all edges. REV 23 GEOMETRY (square
-  //      cells): center square 70% of the cell; ALL FOUR arms use the
-  //      SAME span fraction (46% half-span) — symmetric both axes, no
-  //      rev-22 vertical full-bleed; arm width 33%. DEVIATION:
-  //      [company-initial] — white letter A–E on the center square,
-  //      stroked-outline halo, 40%-of-cell font (rev 21).
+  //      thick dark outline tracing all edges. Geometry (square cells,
+  //      DEVIATION:[square-cells]): center square 70% of the cell; ALL
+  //      FOUR arms use the SAME span fraction (46% half-span); arm
+  //      width 33%. DEVIATION:[company-initial] — white letter A–E on
+  //      the center square, stroked-outline halo, 40%-of-cell font.
   //  (2) CELL_CIRCLE: faithful BLUE circle (brightened for dark checker).
-  //  (3) CELL_DIAMOND: faithful YELLOW rotated square, flat fill
-  //      (highlight ellipse removed rev 21).
+  //  (3) CELL_DIAMOND: faithful YELLOW rotated square, flat fill.
   //  DEVIATION:[token-flat-shading] — no bevels/drop shadows.
   private drawCellEntity(x: number, y: number): void {
     const s = this.state;
@@ -779,9 +675,8 @@ export class SpaceMonopolyApp {
     const cx = x * cfg.tileW + cfg.tileW / 2;
     const cy = y * cfg.tileH + cfg.tileH / 2;
     const m = Math.min(cfg.tileW, cfg.tileH);
-
     if (cell === CELL_CIRCLE) {
-      // REV 20: faithful blue circle, brightened for dark board.
+      // Faithful blue circle, brightened for dark board.
       // Size: ~90% of smaller tile dimension.
       const r = m * 0.45;
       ctx.beginPath();
@@ -792,9 +687,9 @@ export class SpaceMonopolyApp {
       ctx.lineWidth = 3;
       ctx.stroke();
     } else if (cell === CELL_DIAMOND) {
-      // REV 20/21: faithful yellow rotated square, near-full cell,
-      // flat fill + black outline only (highlight ellipse removed —
-      // it read as a spurious glyph at cell sizes).
+      // Faithful yellow rotated square, near-full cell, flat fill +
+      // black outline only (highlight ellipse removed — it read as a
+      // spurious glyph at cell sizes).
       const r = m * 0.48;
       ctx.beginPath();
       ctx.moveTo(cx, cy - r);
@@ -811,12 +706,8 @@ export class SpaceMonopolyApp {
       const com = cell - COMPANY_CELL_BASE;
       const color = s.company[com]?.color ?? '#888';
 
-      // REV 22 cross geometry. Fractions of the min cell dim unless
-      // noted. Vertical arms reach the CELL EDGES in tile-height units
-      // (full bleed top/bottom); horizontal arms keep the 92% span so
-      // they stop just short of the left/right grid lines.
-      // REV 23: symmetric cross — all four arms use the SAME span
-      // fraction of the (now square) cell; no vertical full-bleed.
+      // Symmetric cross (square cells): all four arms use the SAME
+      // span fraction of the cell; no vertical full-bleed.
       const centerSize = m * 0.70;
       const armW = m * 0.33;
       const halfSpan = m * 0.46;
@@ -842,7 +733,7 @@ export class SpaceMonopolyApp {
       ctx.strokeRect(cx + halfCs, cy - armW / 2, armLen, armW);
 
       // DEVIATION:[company-initial] — white letter A–E on the center
-      // square (rev-21 rendering: stroked-outline halo + bold 40% font).
+      // square (stroked-outline halo + bold 40% font).
       const letter = String.fromCharCode(65 + com);
       const fontSize = Math.floor(m * 0.4);
       ctx.font = `bold ${fontSize}px sans-serif`;
@@ -858,10 +749,8 @@ export class SpaceMonopolyApp {
     }
   }
 
-  // REV 20: drawSels() corrected per screenshots (folded in with entity art).
-  // Normal selection: solid royal blue (#0000FF) fill + thick white border.
-  // Active (timer-cycled): solid blue square + thick lime-green border.
-  // Retires translucent-blue/thin-black-stroke normal and clYellow-stroke active.
+  // Sels: normal selection = solid royal blue fill + thick white border;
+  // active (timer-cycled) = solid blue square + thick lime-green border.
   private drawSels(): void {
     const s = this.state;
     if (!s.sels) return;
@@ -905,10 +794,10 @@ export class SpaceMonopolyApp {
     }
   }
 
-  // --- Mouse (NOTES §6.6) ----------------------------------------------------
-  // FIX:[click-mapping] rect-proportional mapping — correct even if the
-  // canvas is CSS-scaled (flex squeeze, host page, DPR oddities). REV 14:
-  // this is what lets the board go responsive with zero mouse changes.
+  // --- Mouse (FIX:[click-mapping] rect-proportional mapping) -----------------
+  // Correct even if the canvas is CSS-scaled (flex squeeze, host page,
+  // DPR oddities) — this is what lets the board stay responsive with
+  // zero mouse-side changes.
 
   private cellFromEvent(e: MouseEvent): [number, number] | null {
     const cfg = this.state.gridConfig();
@@ -937,7 +826,7 @@ export class SpaceMonopolyApp {
 
     const err = checkPlacementRules(s, x, y);
     if (err !== null) {
-      msgBox('Game Information...', err); // rev 13: delegate to dialogs.ts
+      msgBox('Game Information...', err);
       return;
     }
 
@@ -974,9 +863,9 @@ export class SpaceMonopolyApp {
     }, 1500);
   }
 
-  // REV 17 (B8 displacement): turn context ("Turn X of N" + Tournament
-  // tag) lives HERE now, prefixing the R12 guidance — the teal turn box
-  // shows only the bare number per B8 FIDELITY.
+  // Turn context ("Turn X of N" + Tournament tag) lives HERE, prefixing
+  // the R12 guidance — the teal turn box shows only the bare number per
+  // B8 FIDELITY.
   private updateHint(): void {
     const s = this.state;
     if (!s.progress) {
@@ -1003,11 +892,11 @@ export class SpaceMonopolyApp {
       if (s.progress) {
         this.beginTurnChoices();
       } else {
-        // FIDELITY:[auto-finish] (rev 10; R14 retired): orig BitBtn1Click
-        // calls Finish() the instant the final turn ends — standings and
-        // high scores commit immediately, no intermediate "See Results"
-        // click. The button remains as a post-hoc viewer (doConclude's
-        // concluded-guard makes it a no-op the second time).
+        // FIDELITY:[auto-finish]: orig BitBtn1Click calls Finish() the
+        // instant the final turn ends — standings and high scores commit
+        // immediately, no intermediate "See Results" click. The button
+        // remains as a post-hoc viewer (doConclude's concluded-guard
+        // makes it a no-op the second time).
         this.doConclude(false);
       }
     } else {
@@ -1019,7 +908,7 @@ export class SpaceMonopolyApp {
     offerChoices(this.state, {
       redrawGrid: () => this.redrawGrid(),
       moneyShow: () => this.moneyShow(),
-      drawSels: () => this.redrawGrid(), // sels already true; R3 full repaint
+      drawSels: () => this.redrawGrid(), // sels already true; full repaint
       startSelectorTimer: () => this.startSelectorTimer(),
       mainUpdate: () => this.mainUpdate(),
     });
@@ -1030,19 +919,18 @@ export class SpaceMonopolyApp {
   // FIX:[doconclude-guard]: force=true (End Game menu) concludes even
   // mid-game, mirroring orig EndGame1Click; force=false (natural end /
   // post-hoc viewer) only valid once the game has ended.
+  // FIDELITY:[highscores-modal]: the sequence is TWO dialogs — standings
+  // modal, then on Close the high-scores modal (tabbed, current grid's
+  // tab activated) — matching orig Finish(); HighScores(true);. Both end
+  // paths run through here.
   //
-  // FIDELITY:[highscores-modal] (rev 12; R16 retired): the sequence is
-  // now TWO dialogs — standings modal, then on Close the high-scores
-  // modal (tabbed, current grid's tab activated) — matching orig
-  // Finish(); HighScores(true);. Both end paths run through here.
-  //
-  // DEVIATION:[doconclude-composes-tail] (rev 12): composed here rather
-  // than via the scaffold's concludeGame() wrapper because the second
-  // modal needs the INSERTED table with its transient newEntry flags —
-  // the wrapper discards it, and re-running it would duplicate entries.
-  // Body is the wrapper's verbatim: finishStandings → highScores(true)
-  // → createComs. RE-SYNC WARNING: if concludeGame is ever amended,
-  // this three-call sequence must be re-synced manually (see notes).
+  // DEVIATION:[doconclude-composes-tail]: composed here rather than via
+  // the scaffold's concludeGame() wrapper because the second modal needs
+  // the INSERTED table with its transient newEntry flags — the wrapper
+  // discards it, and re-running it would duplicate entries. Body is the
+  // wrapper's verbatim: finishStandings → highScores(true) → createComs.
+  // RE-SYNC WARNING: if concludeGame is ever amended, this three-call
+  // sequence must be re-synced manually.
   private doConclude(force: boolean): void {
     const s = this.state;
     if (force) {
@@ -1061,9 +949,9 @@ export class SpaceMonopolyApp {
     this.redrawGrid();
     this.mainUpdate();
     this.moneyShow();
-    // rev 13: standings + scores modals delegated to dialogs.ts; the
-    // two-dialog chaining (standings → scoresTableDialog) is preserved
-    // via the onClose callback, exactly as rev 12 did in-file.
+    // Standings + scores modals delegated to dialogs.ts; the two-dialog
+    // chaining (standings → scoresTableDialog) is preserved via the
+    // onClose callback.
     standingsDialog(standings, (a) => this.formatMoney(a), () => {
       // orig: Finish(); then HighScores(true) — second modal, current
       // grid's tab activated, new entries highlighted.
@@ -1071,22 +959,19 @@ export class SpaceMonopolyApp {
     });
   }
 
-  // action() hooks — pure logic calls + announcements.
+    // action() hooks — pure logic calls + announcements.
   // FIDELITY:[event-modals]: splits, mergers AND foundings announce via
   // modal dialogs like the orig SplitForm / Merger / NewCom forms. The
-  // modal queue (now in dialogs.ts) preserves orig event order.
+  // modal queue (in dialogs.ts) preserves orig event order.
   //
-  // R15 (rev 11): per-player table data is captured EAGERLY in these
-  // hooks — both before AND after the mutating hook call — because the
-  // DOM modals are queued, not blocking: a later chained event inside
-  // the same action() (merger → split) would otherwise present stale or
-  // mutated numbers when the dialog finally opens. Display ranges match
-  // the orig SplitForm/Merger ListView population exactly: all players
-  // in CLASSIC, current player only in TOURNAMENT (identical to the
-  // ranges comSplitHook/mergerHook themselves mutate).
-  //
-  // REV 13 SPLIT: the EAGER CAPTURE stays HERE (renderer.ts) — only the
-  // presentation of the rows moved to dialogs.ts. Do not move capture.
+  // Per-player table data is captured EAGERLY in these hooks — both
+  // before AND after the mutating hook call — because the DOM modals
+  // are queued, not blocking: a later chained event inside the same
+  // action() (merger → split) would otherwise present stale or mutated
+  // numbers when the dialog finally opens. DO NOT MOVE THE CAPTURE.
+  // Display ranges match the orig SplitForm/Merger ListView population
+  // exactly: all players in CLASSIC, current player only in TOURNAMENT
+  // (identical to the ranges comSplitHook/mergerHook themselves mutate).
   private actionHooks() {
     return {
       redrawGrid: () => this.redrawGrid(),
@@ -1132,17 +1017,13 @@ export class SpaceMonopolyApp {
         this.moneyShow();
       },
       merger: (survivorId: number, absorbedId: number) => {
-        // Capture pre-merger values BEFORE mergerHook mutates them;
+        // Capture pre-merger absorbed holdings BEFORE mergerHook mutates;
         // per-player rows assembled POST-mutation (orig Merger populates
         // its ListView after mutating — mutation-before-display).
         // Absorbed holdings are unchanged by the hook (zombie-shares
         // quirk: never zeroed), so post-read equals pre-read; survivor
         // holdings ARE changed by CLASSIC conversion, hence post-read.
         // moneyEarned = absorbed shares × PRE-merger absorbed value.
-        // REV 24: the vestigial oldSurvivorValue local is DELETED (its
-        // only consumer was the old mergerDialog signature); absorbedValue
-        // REMAINS — it feeds moneyEarned. The mergerDialog call drops
-        // both value ARGUMENTS (dialogs.ts rev 7 pruned them).
         const s = this.state;
         const absorbedValue = s.company[absorbedId].value;
         const start = s.gameType === TOURNAMENT ? s.curplay : 0;
@@ -1175,7 +1056,7 @@ export class SpaceMonopolyApp {
     };
   }
 
-  // --- MoneyShow / MainUpdate (NOTES §6.4–6.5) -------------------------------
+  // --- MoneyShow / MainUpdate --------------------------------------------------
 
   private formatMoney(amount: bigint): string {
     const cu = getGame().getPrefs().getCurrencyUnit();
@@ -1184,22 +1065,27 @@ export class SpaceMonopolyApp {
 
   moneyShow(): void {
     const s = this.state;
-    // REV 17 (B8b): pre-game the top box shows "£0" (orig initial
-    // screenshot state); in play it is the CURRENT player's balance.
-    // Name updates live in mainUpdate (playerLabel).
+    // Pre-game the top box shows "£0" (orig initial screenshot state);
+    // in play it is the CURRENT player's balance. Name updates live in
+    // mainUpdate (playerLabel).
     this.moneyLabel.textContent =
       s.player.length === 0
         ? this.formatMoney(0n)
         : this.formatMoney(s.player[s.curplay].money);
 
-    // DEVIATION:[swatch-color] (R13): orig fills the shape white when
-    // affordable; port keeps the company color, white border = affordable.
+    // REV 25 — DEVIATION:[white-dot-affordance] (R13 / Lee §12.6-7):
+    // affordability = centered WHITE DOT on the company-colored swatch
+    // (dot sized within the swatch so the color stays clearly visible).
+    // The company color is NEVER overwritten (replaces the orig fill-
+    // white-when-affordable scheme AND the port's white-border scheme).
+    // Swatch border is static (#333 via CSS); nonexistent companies show
+    // the gray filler swatch with no dot.
     for (let i = 0; i < NUM_COMPANIES; i++) {
       const swatch = this.companyRows[i].swatch;
       const c = s.company[i];
       swatch.style.background = c?.exist ? c.color : '#555';
-      swatch.style.borderColor =
-        c?.exist && canAffordCompany(s, i) ? '#fff' : '#333';
+      this.companyRows[i].dot.style.visibility =
+        c?.exist && canAffordCompany(s, i) ? 'visible' : 'hidden';
     }
   }
 
@@ -1207,12 +1093,8 @@ export class SpaceMonopolyApp {
     const s = this.state;
     const playing = s.player.length > 0;
 
-    // FIX:[seeresults-disabled]: in-game disabled = sels (orig BitBtn1);
-    // post-game disabled = concluded. With R14 retired the button is
-    // now a post-hoc viewer (standings already auto-showed at game end).
-    // REV 17 (B7): in-game label is "Finish Turn" (was Continue); the
-    // "Place a piece…" sels text is kept (port addition). Post-game
-    // labels/gating are the rev-4/10 behavior, untouched.
+    // In-game disabled = sels (orig BitBtn1); post-game disabled =
+    // concluded. With auto-finish the button is a post-hoc viewer.
     this.continueBtn.disabled = s.progress ? !!s.sels : this.concluded;
     this.continueBtn.textContent = s.progress
       ? (s.sels ? 'Place a piece\u2026' : 'Finish Turn')
@@ -1227,13 +1109,12 @@ export class SpaceMonopolyApp {
     this.rebuildPlayerList();
     this.playerLabel.textContent = playing ? s.player[s.curplay].name : '';
 
-    // REV 17 (B8): teal box = CURRENT TURN NUMBER ONLY. Blank pre-game
-    // (playing false). Turn/max/(Tournament) context lives in the hint
-    // bar (updateHint).
+    // Teal box = CURRENT TURN NUMBER ONLY. Blank pre-game (playing
+    // false). Turn/max/(Tournament) context lives in the hint bar.
     this.turnBox.textContent = playing ? String(s.turn) : '';
 
-    // MenuUpdate (REV 19: dropdown-menu form; polarity UNCHANGED from the
-    // rev-17 flat-button version — Session-19c-verified):
+    // MenuUpdate (dropdown-menu form; polarity unchanged, verified
+    // Session 19c):
     // - setup menus (New Game / Create New Grid / Grid Size / flyout
     //   items / Preferences) disabled when progress;
     // - End Game disabled when !progress;
@@ -1252,7 +1133,7 @@ export class SpaceMonopolyApp {
     setMenuItem('grid-large', setupDisabled);
     setMenuItem('endGame', !s.progress);
 
-    // REV 19 (A4): flyout bullet marks the CURRENT grid type.
+    // Flyout bullet marks the CURRENT grid type (A4).
     const cfg = s.gridConfig();
     this.gridBullets['grid-small'].style.visibility =
       cfg.xsize === GRID_CONFIGS[SMALL].xsize ? 'visible' : 'hidden';
@@ -1264,14 +1145,12 @@ export class SpaceMonopolyApp {
     this.updateHint();
   }
 
-  // --- Dialog delegates (rev 13) ----------------------------------------------
+  // --- Dialog delegates ---------------------------------------------------------
   // Thin methods delegating to dialogs.ts; the app supplies state,
   // formatMoney, and its own refresh/flow callbacks. Order of operations
-  // on each path is preserved verbatim from the rev-12 in-file versions.
-  // REV 24 (Batch D): the setGridSize entry is REMOVED — dialogs.ts rev 7
-  // deleted it from NewGameDialogCallbacks (ruling §12.6-5: grid choice
-  // is owned solely by the Options → Grid Size menu entry). Remaining
-  // entries and their order are unchanged.
+  // on each path is preserved. Grid choice is owned solely by the
+  // Options → Grid Size menu entry (Batch D ruling — the new-game
+  // dialog carries no grid callback).
 
   private newGameDialog(): void {
     newGameDialog(this.state, {
@@ -1312,8 +1191,8 @@ export class SpaceMonopolyApp {
   }
 
   private quitConfirm(): void {
-    // R7: orig closemain ≈ confirm + reload. Score warning only mid-game
-    // (s.progress captured at open time, exactly as rev 12 did).
+    // Orig closemain ≈ confirm + reload. Score warning only mid-game
+    // (s.progress captured at open time).
     quitConfirm(this.state.progress, () => window.location.reload());
   }
 }
@@ -1326,9 +1205,8 @@ export class SpaceMonopolyApp {
 //   </script>
 
 export function mountApp(root: HTMLElement, storage: Storage = localStorage): SpaceMonopolyApp {
-  // REV 14 (B9): DEVIATION:[title-short] — orig form caption was
-  // 'Space Monopoly v1.2 - 2001 David Vivash' (dfm evidence); Lee chose
-  // the short form for the port's document title.
+  // DEVIATION:[title-short]: orig form caption was 'Space Monopoly v1.2 -
+  // 2001 David Vivash' (dfm evidence); Lee chose the short form.
   document.title = 'Space Monopoly';
   return new SpaceMonopolyApp(root, storage);
 }
