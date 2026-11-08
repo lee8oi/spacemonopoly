@@ -1,18 +1,23 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — GAME DIALOGS MODULE (dialogs-game.ts) — rev 6
+// SPACE MONOPOLY PORT — GAME DIALOGS MODULE (dialogs-game.ts) — rev 8
 // Role: new-game dialog (orig TPlayInfo/Players.cpp), trade dialog (orig
 // ComInfoForm), player-details dialog (orig ListBox1DblClick). One of four
 // modules split from dialogs.ts rev 8 (Session 27, spine §15.4); re-exported
 // through the dialogs.ts barrel so renderer.ts's import path is unchanged.
 //
-// Revision history and rationale live in the spines — code header carries
-// current-rev note only, per §2 / §15.3 (rev 6 = rev 5 with header history
-// relocated to DIALOGS-NOTES rev 11). Region commentary inside functions is
-// retained where it documents LIVE contracts (fidelity tags, quirks,
-// gating invariants); per-batch narrative is spine-owned.
+// Revision history and rationale live in ARCHIVE.md — code header carries
+// current-rev note only, per §2 / §15.3. Region commentary inside
+// functions is retained where it documents LIVE contracts (fidelity tags,
+// quirks, gating invariants); per-batch narrative is archive-owned.
 //
-// Spines: DIALOGS-NOTES.md (design basis §12, records §13+), RENDERER-
-// NOTES.md, SCAFFOLD-NOTES.md. Full narrative archive: RENDERER-ARCHIVE.md.
+// rev 8 (Session 31): trade-band fill re-points to companyDisplayColor()
+// from dialogs-core rev 2 — DEVIATION:[company-color-contrast]: display
+// palette (Lee: yellow #e0e000, green #5eea2f) replaces orig state hues
+// at the band; scaffold stays the fidelity record. Header spine refs
+// repointed to ARCHIVE.md (former notes files dissolved Session 28).
+// rev 7 = chat patch on disk (no reissue): FIXED:[trade-dialog-width]
+// constant 380px trade-dialog width (Lee-tuned for large share counts).
+// Full narrative archive: RENDERER-ARCHIVE.md.
 // ============================================================================
 
 import type {
@@ -37,6 +42,7 @@ import {
   el,
   modal,
   msgBox,
+  companyDisplayColor,
 } from './dialogs-core';
 
 const MAX_PLAYERS = 6; // R6 (renderer-layer limit)
@@ -262,11 +268,12 @@ export function newGameDialog(
 // ============================================================================
 
 // LIVE CONTRACTS — trade dialog, orig ComInfoForm (screenshot #5,
-// spine §12.4/§12.2-5, §15.1 rulings):
-//   FIDELITY:[cominfoform] — company-colored HEADER BAND, company name
-//     centered, ‹ Previous / Next › flippers IN-BAND (orig double-chevron
-//     convention modernized, Lee ruling); detail captions verbatim:
-//     "Company Size: {n} squares" / "Cost of Shares: {price}" /
+// §12.4/§12.2-5, §15.1 rulings):
+//   FIDELITY:[cominfoform] — company-colored HEADER BAND (display
+//     palette — DEVIATION:[company-color-contrast], see refresh()),
+//     company name centered, ‹ Previous / Next › flippers IN-BAND (orig
+//     double-chevron convention modernized, Lee ruling); detail captions
+//     verbatim: "Company Size: {n} squares" / "Cost of Shares: {price}" /
 //     "Major Shareholder: {name} with {n} shares." ("Nobody." fallback);
 //     sell group "You own {n} shares in this company" over [Sell All]
 //     [Sell >>>] [qty] Shares; buy group "You can buy up to {n} shares in
@@ -275,6 +282,9 @@ export function newGameDialog(
 //     plain text (orig green-check glyph dropped — weak-evidence styling);
 //     ">>>" glyphs literal. Any company switch re-derives the full panel
 //     in ONE refresh() pass.
+//   FIXED:[trade-dialog-width] (rev 7 chat patch, S31): constant 380px
+//     content width, Lee-tuned — absorbs share-count caption growth so
+//     the dialog never re-lays-out mid-purchase (probe receipts S31).
 //   DEVIATION:[tabs-dropped] — the orig company-name tab strip (confirmed
 //     genuine chrome, screenshot #5; restored at rev 2 per the "easy
 //     access" ruling) is REMOVED: containment could not be made reliable
@@ -282,7 +292,7 @@ export function newGameDialog(
 //     navigation, and removal advances the responsive-design direction.
 //     Flippers remain the complete navigation (cycle skips zombies,
 //     wraps). Fixed 480px form width reverted with it — content sizing
-//     under the CSS max-width.
+//     under the CSS max-width (superseded by the 380px constant).
 //   FIDELITY:[infobuts] — trading buttons disabled while the five
 //     selection squares are shown (Enabled = !sels). Modal is blocking,
 //     so sels cannot change while open. Nav (flippers) stays enabled —
@@ -298,6 +308,9 @@ export function tradeDialog(
   let com = startCom;
 
   const box = el('div');
+  box.style.width = '380px'; // FIXED:[trade-dialog-width] — see contracts
+  // above; measured shrink-to-fit oscillation 352.5↔343.3px (probe
+  // receipts S31), 380px = Lee-tuned constant with growth headroom.
 
   // Header band: flippers flank the centered company name (flex:1).
   const band = el('div');
@@ -375,7 +388,9 @@ export function tradeDialog(
   const refresh = (): void => {
     const view: CompanyInfoView = companyInfo(s, com);
     const c = s.company[com];
-    band.style.background = c.color;
+    // Display palette, NOT state hue — DEVIATION:[company-color-contrast]
+    // (white band text stays legible on bright fills; see dialogs-core).
+    band.style.background = companyDisplayColor(com);
     bandName.textContent = c.name;
     const major = view.majorShareholder
       ? `${s.player[view.majorShareholder.playerIndex].name} with ` +

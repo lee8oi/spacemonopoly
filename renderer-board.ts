@@ -1,14 +1,19 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER BOARD (renderer-board.ts) — rev 1
-// Split from renderer.ts rev 25 (rev-26 wave, Session 30). ZERO BEHAVIOR
-// CHANGE; method bodies carried VERBATIM from rev 25 except ownership
-// re-points: board-local fields keep `this.`; anything owned elsewhere is
-// reached via `app.` / `app.chrome.` (full-app-object plumbing — no
-// accessor machinery). Session-17 dialogs-split precedent.
-// This module OWNS: canvas + 2D context, selector timer state
-// (handle + Tag), and the ResizeObserver over the board region.
-// Palette constants + the boardRegion ELEMENT are chrome-owned (built
-// in AppChrome); board holds the runtime (fit, observe, paint).
+// SPACE MONOPOLY PORT — RENDERER BOARD (renderer-board.ts) — rev 2
+// Split from renderer.ts rev 25 (rev-26 wave, Session 30). ZERO
+// BEHAVIOR CHANGE at split; method bodies carried VERBATIM from rev 25
+// except ownership re-points: board-local fields keep `this.`; anything
+// owned elsewhere is reached via `app.` / `app.chrome.` (full-app-object
+// plumbing — no accessor machinery). Session-17 dialogs-split precedent.
+//
+// rev 2 (Session 31): cross-token fill re-points to companyDisplayColor()
+// (dialogs-core rev 2) — DEVIATION:[company-color-contrast]: board
+// tokens paint the DISPLAY palette (Lee: yellow #e0e000, green #5eea2f)
+// so the white A–E initial keeps legibility; the gray fallback for
+// absent/out-of-range indices ('#888') is preserved via the helper's
+// `nonexistent` argument. Scaffold state hues (orig clYellow/clLime)
+// remain the fidelity record — never painted here.
+// rev 1 = verbatim split carry (Session 30).
 // Chrome stylesheet loads BEFORE canvas painting (injectStyles runs in
 // AppChrome, constructed before AppBoard — order preserved from rev 25).
 // ============================================================================
@@ -36,6 +41,7 @@ import {
   SEL_BORDER_ACTIVE,
   ACTIVE_STROKE,
 } from './renderer-chrome';
+import { companyDisplayColor } from './dialogs';
 import { el, msgBox } from './dialogs';
 import type { SpaceMonopolyApp } from './renderer';
 
@@ -146,6 +152,8 @@ export class AppBoard {
   //      FOUR arms use the SAME span fraction (46% half-span); arm
   //      width 33%. DEVIATION:[company-initial] — white letter A–E on
   //      the center square, stroked-outline halo, 40%-of-cell font.
+  //      REV 2: token fill = DISPLAY palette (companyDisplayColor),
+  //      DEVIATION:[company-color-contrast] — state hues never painted.
   //  (2) CELL_CIRCLE: faithful BLUE circle (brightened for dark checker).
   //  (3) CELL_DIAMOND: faithful YELLOW rotated square, flat fill.
   //  DEVIATION:[token-flat-shading] — no bevels/drop shadows.
@@ -187,7 +195,9 @@ export class AppBoard {
       ctx.stroke();
     } else if (cell >= COMPANY_CELL_BASE) {
       const com = cell - COMPANY_CELL_BASE;
-      const color = s.company[com]?.color ?? '#888';
+      // DISPLAY palette (rev 2) — '#888' gray fallback for
+      // absent/out-of-range indices preserved verbatim.
+      const color = companyDisplayColor(com, '#888');
 
       // Symmetric cross (square cells): all four arms use the SAME
       // span fraction of the cell; no vertical full-bleed.

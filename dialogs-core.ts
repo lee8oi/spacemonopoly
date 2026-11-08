@@ -1,12 +1,24 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — DIALOG CORE MODULE (dialogs-core.ts) — rev 1
-// Structural split of dialogs.ts rev 8 (Session 27, spine §15.4): this module
-// holds dialog CSS injection, shared DOM helpers, the modal wrapper + queue,
-// and the generic boxes. History/rationale: DIALOGS-NOTES.md (§13.2 absorbed
-// rev chain; §15.3 relocation ruling) / RENDERER-NOTES.md; full narrative
-// history in RENDERER-ARCHIVE.md. Split record: spine rev 11 (pending).
+// SPACE MONOPOLY PORT — DIALOG CORE MODULE (dialogs-core.ts) — rev 2
+// Structural split of dialogs.ts rev 8 (Session 27): this module holds
+// dialog CSS injection, shared DOM helpers, the modal wrapper + queue,
+// and the generic boxes. History/rationale: ARCHIVE.md (Sections 0–5;
+// former DIALOGS-NOTES §13.2 absorbed) / RENDERER-ARCHIVE.md (renderer
+// deep history). Former notes files dissolved Session 28.
 //
-// Rev 1 = verbatim carry from dialogs.ts rev 8; zero behavior change.
+// rev 2 (Session 31), three changes, rest carried VERBATIM from rev 1:
+//  (1) FOLD-IN: the `modal` export patch (landed on disk as a chat patch
+//      after rev 1) becomes official — zero behavior change, semantics
+//      identical.
+//  (2) Header history refs repointed to ARCHIVE.md (queued item).
+//  (3) NEW — display company palette, DEVIATION:[company-color-contrast]
+//      (Lee ruling Session 31): COMPANY_DISPLAY_COLORS +
+//      companyDisplayColor(). Scaffold's frozen COMPANY_DEFS (orig
+//      clYellow #ffff00 / clLime #00ff00, Players.cpp CreateComs) remains
+//      the FIDELITY GROUND TRUTH in state; every DISPLAY site re-points
+//      here instead of reading state colors. Lee-ruled display values:
+//      yellow #e0e000, green #5eea2f (darkened so white text/dots stay
+//      legible on fills); red/teal/blue unchanged.
 // ============================================================================
 
 // ============================================================================
@@ -123,6 +135,36 @@ function pumpQueue(): void {
     queueActive = false;
     pumpQueue();
   });
+}
+
+// ============================================================================
+// DISPLAY COMPANY PALETTE — DEVIATION:[company-color-contrast] (rev 2)
+// ============================================================================
+
+// Display values for the five companies, INDEX-ALIGNED with scaffold's
+// frozen COMPANY_DEFS (0–4). Scaffold/state keep the orig VCL hues as the
+// fidelity record; every DISPLAY site must read THESE, not state colors,
+// so the user-visible palette stays consistent across side-panel swatches,
+// board tokens, and dialogs. Lee-ruled Session 31: yellow/green darkened
+// so white text (band captions, A–E initials) and the white affordability
+// dot stay legible on the fills.
+export const COMPANY_DISPLAY_COLORS: ReadonlyArray<string> = [
+  '#ff0000', // 0 Atlantis Ltd.   — clRed, unchanged
+  '#5eea2f', // 1 Betelguese      — orig clLime #00ff00, darkened (Lee)
+  '#e0e000', // 2 Cannon Inc.     — orig clYellow #ffff00, darkened (Lee)
+  '#008080', // 3 Debenese        — clTeal, unchanged
+  '#0000ff', // 4 Eridnus Corp.   — clBlue, unchanged
+];
+
+// Display color for company index `com`. `nonexistent` is the caller's
+// gray-filler for absent/out-of-range indices (board paints '#888',
+// side-panel repaint uses '#555' — pass your site's value to preserve
+// its existing behavior exactly).
+export function companyDisplayColor(
+  com: number,
+  nonexistent: string = '#888',
+): string {
+  return COMPANY_DISPLAY_COLORS[com] ?? nonexistent;
 }
 
 // ============================================================================

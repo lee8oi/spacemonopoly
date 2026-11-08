@@ -1,15 +1,26 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER CHROME (renderer-chrome.ts) — rev 1
+// SPACE MONOPOLY PORT — RENDERER CHROME (renderer-chrome.ts) — rev 2
 // Split from renderer.ts rev 25 (rev-26 wave, Session 30). ZERO BEHAVIOR
-// CHANGE; bodies carried VERBATIM from rev 25 except ownership re-points:
-// chrome-local fields keep `this.`; shell-owned logic is reached via
-// `app.` (full-app-object plumbing — no accessor machinery). Session-17
-// dialogs-split precedent.
+// CHANGE at split; bodies carried VERBATIM from rev 25 except ownership
+// re-points: chrome-local fields keep `this.`; shell-owned logic is
+// reached via `app.` (full-app-object plumbing — no accessor machinery).
+// Session-17 dialogs-split precedent.
 // Issued as ONE complete file (chunk-splice protocol retired for this
 // wave after the Session-30 splice failure — do not append anything).
 // SPLIT-WAVE ADJUSTMENT: element fields assigned inside buildChrome()
 // (not the constructor) drop `readonly` (TS2540 under strict mode);
 // definite-assignment `!` retained. Logged for ARCHIVE.
+//
+// rev 2 (Session 31): side-panel swatch fill re-points to
+// companyDisplayColor() (dialogs-core rev 2) —
+// DEVIATION:[company-color-contrast]: DISPLAY palette (Lee: yellow
+// #e0e000, green #5eea2f) replaces scaffold state hues at the swatch;
+// scaffold COMPANY_DEFS (orig clYellow/clLime) remains the fidelity
+// record in state. The build-time fill is the INITIAL value only —
+// moneyShow() (shell, rev 27) repaints every swatch from state each
+// refresh and must read the SAME display palette; the two sites pair.
+// History: ARCHIVE.md (Sections 0–5); RENDERER-ARCHIVE.md (revs 16–26).
+//
 // This module OWNS: palette constants, the chrome CSS sheet, menu
 // system (menubar, dropdown panels, flyout, underlay, positioning),
 // side-panel construction, and ALL chrome ELEMENT references
@@ -30,7 +41,7 @@ import {
   COMPANY_DEFS,
 } from './scaffold';
 import type { GridType } from './scaffold';
-import { el, injectDialogStyles } from './dialogs';
+import { el, injectDialogStyles, companyDisplayColor } from './dialogs';
 import type { SpaceMonopolyApp } from './renderer';
 
 // Palette — approximations of orig ImageList tiles, tuned for the dark
@@ -357,12 +368,15 @@ export class AppChrome {
     // permanent). Company order = port COMPANY_DEFS order (verified).
     // REV 25: each swatch gains a centered dot child — AFFORDABILITY
     // indicator (white dot on company color; hidden when unaffordable
-    // or company nonexistent). DEVIATION:[white-dot-affordance].
+    // or company nonexistent). DEVIATION:[white-dot-affordability].
+    // REV 2: swatch fill = DISPLAY palette (companyDisplayColor), NOT
+    // the scaffold hue — pairs with moneyShow()'s repaint (shell rev
+    // 27); see DEVIATION:[company-color-contrast] in dialogs-core.
     const cPanel = el('div', 'sm-panel');
     for (let i = 0; i < NUM_COMPANIES; i++) {
       const row = el('div', 'sm-comrow');
       const swatch = el('span', 'sm-swatch');
-      swatch.style.background = COMPANY_DEFS[i].color;
+      swatch.style.background = companyDisplayColor(i);
       const dot = el('span', 'sm-dot');
       swatch.appendChild(dot);
       const btn = el('button', undefined, COMPANY_DEFS[i].name);

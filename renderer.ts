@@ -1,11 +1,11 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — RENDERER / APP SHELL (renderer.ts) — rev 26
+// SPACE MONOPOLY PORT — RENDERER / APP SHELL (renderer.ts) — rev 27
 // Split wave (Session 30; approved Session-29 rulings): this file is
 // now the APP SHELL — turn flow, mainUpdate, delegates, actionHooks.
 // Chrome (palette, CSS, menubar/menus, side panel) → renderer-chrome.ts.
 // Board (canvas paint, fit, mouse, timers) → renderer-board.ts.
-// ZERO BEHAVIOR CHANGE: bodies carried VERBATIM from rev 25 except
-// (a) ownership re-points — sub-module members reached via
+// ZERO BEHAVIOR CHANGE at split: bodies carried VERBATIM from rev 25
+// except (a) ownership re-points — sub-module members reached via
 // this.chrome.X / this.board.X, state kept on the shell; and
 // (b) visibility widening where a shell member is now CALLED from a
 // sub-module (methods formerly private → public: setGridSize,
@@ -13,8 +13,16 @@
 // Full-app-object plumbing — no accessor machinery (ruling).
 // Issued as ONE complete file (chunk-splice protocol retired for this
 // wave after the Session-30 splice failure — do not append anything).
+//
+// rev 27 (Session 31): moneyShow() swatch repaint re-points to
+// companyDisplayColor() (dialogs-core rev 2) —
+// DEVIATION:[company-color-contrast]: the LIVE swatch fill uses the
+// DISPLAY palette (Lee: yellow #e0e000, green #5eea2f), pairing with
+// chrome rev 2's build-time fill; scaffold state colors (orig
+// clYellow/clLime) remain the fidelity record and must NOT be painted.
+// rev 26 = three-way renderer split (Session 30).
 // History: ARCHIVE.md §5 (rev-24 era) + RENDERER-ARCHIVE.md (revs
-// 16–23; rev-24/25 append due this session).
+// 16–26).
 // ============================================================================
 //
 // REV 25 lineage carried forward (Session 29, Batch G):
@@ -61,6 +69,7 @@ import {
   aboutDialog,
   newGameDialog,
   quitConfirm,
+  companyDisplayColor,
 } from './dialogs';
 import type { SplitTableRow, MergerTableRow } from './dialogs';
 import { AppChrome } from './renderer-chrome';
@@ -348,14 +357,19 @@ export class SpaceMonopolyApp {
     // REV 25 — DEVIATION:[white-dot-affordance] (R13 / Lee §12.6-7):
     // affordability = centered WHITE DOT on the company-colored swatch
     // (dot sized within the swatch so the color stays clearly visible).
-    // The company color is NEVER overwritten (replaces the orig fill-
+    // The DISPLAY color is NEVER overwritten (replaces the orig fill-
     // white-when-affordable scheme AND the port's white-border scheme).
     // Swatch border is static (#333 via CSS); nonexistent companies show
     // the gray filler swatch with no dot.
+    // REV 27 — DEVIATION:[company-color-contrast]: the LIVE fill is
+    // companyDisplayColor(i) (dialogs-core rev 2 display palette; Lee:
+    // yellow #e0e000, green #5eea2f), pairing with chrome rev 2's
+    // build-time fill. State hues (orig clYellow/clLime) stay the
+    // fidelity record — never painted here.
     for (let i = 0; i < NUM_COMPANIES; i++) {
       const swatch = this.chrome.companyRows[i].swatch;
       const c = s.company[i];
-      swatch.style.background = c?.exist ? c.color : '#555';
+      swatch.style.background = c?.exist ? companyDisplayColor(i) : '#555';
       this.chrome.companyRows[i].dot.style.visibility =
         c?.exist && canAffordCompany(s, i) ? 'visible' : 'hidden';
     }

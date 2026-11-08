@@ -1,13 +1,23 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — EVENT DIALOGS MODULE (dialogs-events.ts) — rev 1
+// SPACE MONOPOLY PORT — EVENT DIALOGS MODULE (dialogs-events.ts) — rev 2
 // Founding / split / merger announcement dialogs (orig NewCom / SplitForm /
 // Merger form). Structural split of dialogs.ts rev 8 (Session 27, spine
 // §15.4): content carried VERBATIM — region commentary relocates to the
 // spine at each region's next substantive reissue (§15.3 piggyback rule),
 // so it is intentionally preserved here until then. History/rationale:
-// DIALOGS-NOTES.md / RENDERER-NOTES.md; full narrative in RENDERER-ARCHIVE.md.
+// ARCHIVE.md (notes files dissolved Session 28); full narrative in
+// RENDERER-ARCHIVE.md.
 //
 // Rev 1 = verbatim carry from dialogs.ts rev 8; zero behavior change.
+// rev 2 (Session 31): all four banner swatch fills re-point to
+// companyDisplayColor() (dialogs-core rev 2) —
+// DEVIATION:[company-color-contrast]: banner swatches paint the DISPLAY
+// palette (Lee: yellow #e0e000, green #5eea2f), completing the five-
+// consumer sweep (chrome / shell / board / game / this file); scaffold
+// state hues (orig clYellow/clLime) remain the fidelity record — never
+// painted. Banner TEXT sits on the dark modal beside the swatch (not
+// on the fill), so text legibility is unaffected; this change is for
+// cross-surface COLOR CONSISTENCY only.
 // ============================================================================
 
 import type {
@@ -21,6 +31,7 @@ import {
   el,
   modal,
   queueModal,
+  companyDisplayColor,
 } from './dialogs-core';
 
 // R15 view-model rows: per-player table content for split/merger dialogs,
@@ -66,7 +77,8 @@ export function foundingDialog(
 
     const banner = el('div', 'sm-splitbanner');
     const swatch = el('span', 'sm-swatch');
-    swatch.style.background = c.color;
+    // rev 2: DISPLAY palette, not state hue (DEVIATION:[company-color-contrast])
+    swatch.style.background = companyDisplayColor(companyId);
     banner.appendChild(swatch);
     banner.appendChild(el('strong', undefined, c.name));
     box.appendChild(banner);
@@ -126,7 +138,8 @@ export function splitDialog(
 
     const banner = el('div', 'sm-splitbanner');
     const swatch = el('span', 'sm-swatch');
-    swatch.style.background = c.color;
+    // rev 2: DISPLAY palette, not state hue (DEVIATION:[company-color-contrast])
+    swatch.style.background = companyDisplayColor(companyId);
     banner.appendChild(swatch);
     banner.appendChild(el('strong', undefined, c.name));
     box.appendChild(banner);
@@ -206,9 +219,12 @@ export function mergerDialog(
     box.appendChild(el('h3', undefined, 'Merger!'));
 
     // Absorbed banner (struck-through name to signal it's gone).
+    // rev 2: DISPLAY palette by company id (DEVIATION:[company-color-contrast]);
+    // the absorbed company is nonexistent at paint time, but its id remains
+    // a valid palette index — struck-through name + fill signals "gone".
     const banner = el('div', 'sm-splitbanner');
     const swAb = el('span', 'sm-swatch');
-    swAb.style.background = absorbed.color;
+    swAb.style.background = companyDisplayColor(absorbedId);
     const abName = el('strong', undefined, absorbed.name);
     abName.style.textDecoration = 'line-through';
     banner.appendChild(swAb);
@@ -217,7 +233,7 @@ export function mergerDialog(
     box.appendChild(banner);
     const banner2 = el('div', 'sm-splitbanner');
     const swSv = el('span', 'sm-swatch');
-    swSv.style.background = survivor.color;
+    swSv.style.background = companyDisplayColor(survivorId);
     banner2.appendChild(swSv);
     banner2.appendChild(el('strong', undefined, survivor.name));
     box.appendChild(banner2);
