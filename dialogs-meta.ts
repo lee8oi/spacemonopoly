@@ -1,5 +1,5 @@
 // ============================================================================
-// SPACE MONOPOLY PORT — META DIALOGS MODULE (dialogs-meta.ts) — rev 1
+// SPACE MONOPOLY PORT — META DIALOGS MODULE (dialogs-meta.ts) — rev 2
 // Preferences (orig Preferences.cpp), high scores (orig HighScores), final
 // standings (orig OverForm Finish), about, quit confirm. Structural split
 // of dialogs.ts rev 8 (Session 27, spine §15.4): content carried VERBATIM;
@@ -7,6 +7,13 @@
 // substantive reissue (§15.3 piggyback rule). History/rationale:
 // DIALOGS-NOTES.md / RENDERER-NOTES.md; full narrative in RENDERER-ARCHIVE.md.
 //
+// Rev 2 (Session 32): About dialog expanded per Lee ruling (queue item 2):
+// one-line credit to original author (David Vivash), one-line port
+// description, and a basic gameplay list — wrapped in a scrollable
+// container (inline max-height/overflow-y) so the card stays compact.
+// Orig AboutBox was finished/trivial and carried no gameplay text, so the
+// summary is a Lee-sanctioned port ADDITION, not a fidelity restoration.
+// All other regions carried verbatim from rev 1.
 // Rev 1 = verbatim carry from dialogs.ts rev 8; zero behavior change.
 // ============================================================================
 
@@ -330,15 +337,52 @@ export function standingsDialog(
 }
 
 // ============================================================================
-// ABOUT (static card; orig AboutForm finished/trivial — NOTES §7)
+// ABOUT (orig AboutForm finished/trivial — NOTES §7; content is a
+// Lee-ruled port ADDITION beyond the orig card, not fidelity restoration)
 // ============================================================================
 
+// Session 32 rev 2: description content per Lee ruling — credit line,
+// port line, six-beat gameplay list — inside a scrollable body so the
+// modal stays compact regardless of content length (acceptance = user-
+// perceived, rule 2; max-height is a tunable, not a geometry contract).
 export function aboutDialog(): void {
   const box = el('div');
   box.appendChild(el('h3', undefined, 'Space Monopoly'));
-  box.appendChild(el('div', undefined,
-    'TypeScript port of Space Monopoly (Borland C++ Builder/VCL original).'));
-  box.appendChild(el('div', 'sm-hint', 'Logic layer faithful port; renderer approximates original visuals.'));
+
+  // Scrollable body: inline style keeps this a single-file reissue (no
+  // chrome/CSS coupling); promote to a chrome class in the CSS survey
+  // batch if Lee prefers a class-based home.
+  const body = el('div');
+  body.style.maxHeight = '240px';
+  body.style.overflowY = 'auto';
+
+  // One-line credit to the original author.
+  body.appendChild(el('div', undefined,
+    'Original Space Monopoly created by David Vivash.'));
+
+  // One-line port description (carries rev 1\u2019s logic/renderer split).
+  body.appendChild(el('div', 'sm-hint',
+    'This is a TypeScript browser port: the logic is a faithful port; ' +
+    'the renderer approximates the original visuals.'));
+
+  // Basic gameplay information.
+  body.appendChild(el('div', 'sm-grouptitle', 'How to play'));
+  const list = el('ul');
+  const beats = [
+    '2\u20134 players take turns at one computer (hotseat), each starting with \u00A36,000.',
+    'On your turn, place a piece on the board to claim a square.',
+    'When claimed squares join up, companies form on them; a company\u2019s ' +
+      'share price rises as it grows.',
+    'Each turn you can buy or sell shares in any active company.',
+    'When a growing company engulfs a smaller one, the smaller is taken ' +
+      'over and its shareholders are bought out.',
+    'When the game ends, the player with the highest net wealth \u2014 ' +
+      'cash plus share value \u2014 wins.',
+  ];
+  for (const b of beats) list.appendChild(el('li', undefined, b));
+  body.appendChild(list);
+  box.appendChild(body);
+
   const actions = el('div', 'sm-actions');
   const ok = el('button', undefined, 'Dismiss');
   actions.appendChild(ok);
